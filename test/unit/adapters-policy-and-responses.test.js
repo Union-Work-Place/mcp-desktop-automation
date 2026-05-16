@@ -37,11 +37,31 @@ test('policy helpers enforce tool allowlist, bounds and safe area', () => {
 });
 
 test('platform adapter reports platform-specific capabilities', () => {
-  const linuxPlatform = createPlatformAdapter({ platform: 'linux', env: {} });
+  const linuxPlatform = createPlatformAdapter({
+    platform: 'linux',
+    env: { MCP_DESKTOP_AUTOMATION_AUTO_DETECT_DISPLAY: 'false' },
+    readdirSync() {
+      return ['X0'];
+    },
+  });
   const macPlatform = createPlatformAdapter({ platform: 'darwin', env: {} });
 
   assert.equal(linuxPlatform.getDesktopCapabilities({ readOnly: true }).displayServer, 'headless');
   assert.equal(macPlatform.getDesktopCapabilities({}).keyboard.primaryModifier, 'command');
+});
+
+test('platform adapter auto-detects X11 socket displays on Linux', () => {
+  const linuxPlatform = createPlatformAdapter({
+    platform: 'linux',
+    env: {},
+    readdirSync() {
+      return ['X3', 'X0', 'not-a-display'];
+    },
+  });
+
+  assert.equal(linuxPlatform.getDesktopCapabilities({}).displayServer, 'x11');
+  assert.equal(linuxPlatform.getScreenCaptureAvailability().available, true);
+  assert.deepEqual(linuxPlatform.getRuntimeEnvironment(), { DISPLAY: ':0' });
 });
 
 test('screenshot adapter passes mapped options to implementation', async () => {

@@ -14,7 +14,7 @@ MCP server for desktop automation over stdio. It exposes screen inspection, mous
 
 - Node.js 18+.
 - Desktop permissions for screen capture and synthetic input.
-- A graphical session for screenshots on Linux (`DISPLAY` or `WAYLAND_DISPLAY`).
+- A graphical session for screenshots on Linux. The server prefers `DISPLAY` or `WAYLAND_DISPLAY` and can auto-detect X11 sockets such as `:0` when they exist.
 
 ## Quick Start
 
@@ -76,12 +76,14 @@ The server supports configuration-driven safety controls:
 - `MCP_DESKTOP_AUTOMATION_ALLOWED_TOOLS` and `MCP_DESKTOP_AUTOMATION_BLOCKED_TOOLS` provide allow/deny lists.
 - `MCP_DESKTOP_AUTOMATION_SAFE_AREA=x,y,width,height` limits mouse movement and clickable area.
 - `MCP_DESKTOP_AUTOMATION_SCREENSHOT_*` options control timeouts, TTL and byte limits.
+- `MCP_DESKTOP_AUTOMATION_DISPLAY=:0` forces a specific X11 display when Linux desktop discovery needs an explicit override.
+- `MCP_DESKTOP_AUTOMATION_AUTO_DETECT_DISPLAY=false` disables Linux X11 socket auto-detection and keeps strict headless behavior.
 
 See [docs/security.md](docs/security.md) for the full model.
 
 ## Platform Notes
 
-- Linux: screenshots require `DISPLAY` or `WAYLAND_DISPLAY`. Headless environments return a controlled MCP error instead of crashing.
+- Linux: screenshots use `DISPLAY` or `WAYLAND_DISPLAY` when present and otherwise auto-detect the first X11 socket under `/tmp/.X11-unix`. If neither exists, the server returns a controlled MCP error instead of crashing.
 - Windows 11: use Node 18+ and grant desktop/input permissions as required by your environment.
 - macOS: accessibility and screen-recording permissions may be required.
 
@@ -92,6 +94,7 @@ Platform-specific setup is documented in [docs/linux.md](docs/linux.md) and [doc
 - `npm run lint`
 - `npm test`
 - `npm run test:coverage`
+- `npm run test:live-smoke` on a real Linux desktop session with `xterm`
 
 Additional references:
 

@@ -25,7 +25,8 @@
     "test:contract": "node ./scripts/run-with-compatible-node.js --test test/contract/**/*.test.js",
     "test:smoke": "node ./scripts/run-with-compatible-node.js --test test/smoke/**/*.test.js",
     "test:coverage": "node ./scripts/run-with-compatible-node.js ./scripts/run-coverage.js",
-    "test:package": "node ./scripts/run-with-compatible-node.js ./scripts/check-package-contents.js"
+    "test:package": "node ./scripts/run-with-compatible-node.js ./scripts/check-package-contents.js",
+    "test:live-smoke": "node ./scripts/run-with-compatible-node.js ./scripts/live-smoke.js"
   },
   "keywords": [
     "mcp",
