@@ -11,7 +11,7 @@ async function createConnectedClient(options = {}) {
     command: process.execPath,
     args: [path.join(workspaceRoot, 'launch.js')],
     cwd: workspaceRoot,
-    env: options.env,
+    env: Object.assign({}, process.env, options.env),
     stderr: 'pipe',
   });
 
