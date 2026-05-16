@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { getPackCommand } = require('../../scripts/check-package-contents');
+const { getPackCommand, getWindowsShell } = require('../../scripts/check-package-contents');
 
 test('package check invokes npm directly on non-Windows platforms', () => {
   assert.deepEqual(getPackCommand('linux', {}), {
@@ -15,4 +15,11 @@ test('package check invokes npm through cmd on Windows', () => {
     command: 'C:\\Windows\\System32\\cmd.exe',
     args: ['/d', '/s', '/c', 'npm pack --json --dry-run'],
   });
+});
+
+test('package check falls back to SystemRoot for Windows shell resolution', () => {
+  assert.equal(
+    getWindowsShell({ SystemRoot: 'C:\\Windows' }),
+    'C:\\Windows\\System32\\cmd.exe',
+  );
 });

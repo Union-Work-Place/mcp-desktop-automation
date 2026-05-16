@@ -7,10 +7,22 @@ var path = require('path');
 
 var PROJECT_ROOT = path.resolve(__dirname, '..');
 
+function getWindowsShell(env) {
+  if (env && (env.ComSpec || env.comspec)) {
+    return env.ComSpec || env.comspec;
+  }
+
+  if (env && (env.SystemRoot || env.windir)) {
+    return path.win32.join(env.SystemRoot || env.windir, 'System32', 'cmd.exe');
+  }
+
+  return 'C:\\Windows\\System32\\cmd.exe';
+}
+
 function getPackCommand(platform, env) {
   if (platform === 'win32') {
     return {
-      command: (env && (env.ComSpec || env.comspec)) || 'cmd.exe',
+      command: getWindowsShell(env),
       args: ['/d', '/s', '/c', 'npm pack --json --dry-run'],
     };
   }
@@ -66,6 +78,7 @@ if (require.main === module) {
 
 module.exports = {
   getPackCommand: getPackCommand,
+  getWindowsShell: getWindowsShell,
   main: main,
   validate: validate,
 };
