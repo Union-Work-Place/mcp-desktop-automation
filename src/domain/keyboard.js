@@ -28,7 +28,10 @@ const MODIFIER_ALIASES = {
 };
 
 const SUPPORTED_NAMED_KEYS = new Set([
+  'alt',
   'backspace',
+  'command',
+  'control',
   'delete',
   'down',
   'end',
@@ -40,6 +43,7 @@ const SUPPORTED_NAMED_KEYS = new Set([
   'pagedown',
   'pageup',
   'right',
+  'shift',
   'space',
   'tab',
   'up',
@@ -49,9 +53,11 @@ function getPrimaryModifier(platform) {
   return platform === 'darwin' ? 'command' : 'control';
 }
 
-function normalizeKey(key) {
+function normalizeKey(key, platform) {
   const normalized = String(key || '').trim().toLowerCase();
-  const aliased = KEY_ALIASES[normalized] || normalized;
+  const aliased = normalized === 'primary'
+    ? getPrimaryModifier(platform || process.platform)
+    : KEY_ALIASES[normalized] || MODIFIER_ALIASES[normalized] || normalized;
 
   if (/^[a-z0-9]$/.test(aliased) || /^f([1-9]|1[0-2])$/.test(aliased) || SUPPORTED_NAMED_KEYS.has(aliased)) {
     return aliased;

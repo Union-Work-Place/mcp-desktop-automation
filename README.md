@@ -47,10 +47,39 @@ Use the example in [docs/configs/claude-desktop.json](docs/configs/claude-deskto
 - `get_mouse_position`: returns the current mouse position.
 - `mouse_move`: moves the mouse to specific coordinates.
 - `mouse_drag`: drags the mouse to specific coordinates.
+- `mouse_drag_with_key_press`: drags the mouse while holding a normalized key with optional modifiers.
 - `mouse_scroll`: scrolls the mouse wheel by delta values.
 - `mouse_click`: performs a click or double click.
 - `keyboard_type`: types text at the current cursor position.
+- `keyboard_type_with_key_press`: types text while holding a normalized key with optional modifiers.
 - `keyboard_press`: presses a normalized key with optional normalized modifiers.
+
+## Examples
+
+Hold `shift` while typing:
+
+```json
+{
+  "name": "keyboard_type_with_key_press",
+  "arguments": {
+    "key": "shift",
+    "text": "hello world"
+  }
+}
+```
+
+Hold the primary modifier while dragging:
+
+```json
+{
+  "name": "mouse_drag_with_key_press",
+  "arguments": {
+    "x": 640,
+    "y": 360,
+    "key": "primary"
+  }
+}
+```
 
 ## Resources
 

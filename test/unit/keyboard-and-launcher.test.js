@@ -7,6 +7,9 @@ const { findCompatibleNode, getWellKnownCandidates } = require('../../launch');
 test('keyboard aliases normalize across platforms', () => {
   assert.equal(normalizeKey('Esc'), 'escape');
   assert.equal(normalizeKey('return'), 'enter');
+  assert.equal(normalizeKey('cmd'), 'command');
+  assert.equal(normalizeKey('option'), 'alt');
+  assert.equal(normalizeKey('primary', 'darwin'), 'command');
   assert.deepEqual(normalizeModifiers(['ctrl', 'primary', 'cmd'], 'win32'), ['control', 'command']);
   assert.deepEqual(normalizeModifiers(['primary', 'option'], 'darwin'), ['command', 'alt']);
 

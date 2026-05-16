@@ -8,6 +8,18 @@ function createKeyboardTools(dependencies) {
   const logger = dependencies.logger || console;
   const robotAdapter = dependencies.robotAdapter;
   const platform = dependencies.platform;
+  const currentPlatform = platform && platform.getDesktopCapabilities
+    ? platform.getDesktopCapabilities(config).platform
+    : process.platform;
+
+  function getNormalizedKeySettings(params) {
+    const settings = Object.assign({ modifiers: [] }, params || {});
+
+    return {
+      key: normalizeKey(settings.key, currentPlatform),
+      modifiers: normalizeModifiers(settings.modifiers, currentPlatform),
+    };
+  }
 
   return {
     async keyboardType(params) {
@@ -33,21 +45,16 @@ function createKeyboardTools(dependencies) {
     },
 
     async keyboardPress(params) {
-      const settings = Object.assign({ modifiers: [] }, params || {});
-
       try {
         assertToolAllowed('keyboard_press', config, { requiresInput: true });
 
-        const normalizedKey = normalizeKey(settings.key);
-        const normalizedModifiers = normalizeModifiers(settings.modifiers, platform && platform.getDesktopCapabilities
-          ? platform.getDesktopCapabilities(config).platform
-          : process.platform);
+        const normalizedSettings = getNormalizedKeySettings(params);
 
         if (config.dryRun) {
-          return okResponse({ dryRun: true, key: normalizedKey, modifiers: normalizedModifiers });
+          return okResponse({ dryRun: true, key: normalizedSettings.key, modifiers: normalizedSettings.modifiers });
         }
 
-        robotAdapter.pressKey(normalizedKey, normalizedModifiers);
+        robotAdapter.pressKey(normalizedSettings.key, normalizedSettings.modifiers);
         return okResponse();
       } catch (error) {
         const automationError = toAutomationError(
@@ -57,6 +64,49 @@ function createKeyboardTools(dependencies) {
         );
 
         logger.error('Error pressing key:', automationError);
+        return errorResponse(automationError.code, automationError.message);
+      }
+    },
+
+    async keyboardTypeWithKeyPress(params) {
+      let heldKey = null;
+
+      try {
+        assertToolAllowed('keyboard_type_with_key_press', config, { requiresInput: true });
+
+        const normalizedSettings = getNormalizedKeySettings(params);
+
+        if (config.dryRun) {
+          return okResponse({
+            dryRun: true,
+            key: normalizedSettings.key,
+            modifiers: normalizedSettings.modifiers,
+            text: params.text,
+          });
+        }
+
+        heldKey = normalizedSettings;
+        robotAdapter.toggleKey(heldKey.key, 'down', heldKey.modifiers);
+        robotAdapter.typeString(params.text);
+        robotAdapter.toggleKey(heldKey.key, 'up', heldKey.modifiers);
+        heldKey = null;
+        return okResponse();
+      } catch (error) {
+        if (heldKey) {
+          try {
+            robotAdapter.toggleKey(heldKey.key, 'up', heldKey.modifiers);
+          } catch {
+            // Best-effort cleanup to avoid leaving the key held down.
+          }
+        }
+
+        const automationError = toAutomationError(
+          error,
+          ErrorCodes.AUTOMATION_UNAVAILABLE,
+          'Failed to type text while holding a key.',
+        );
+
+        logger.error('Error typing text while holding a key:', automationError);
         return errorResponse(automationError.code, automationError.message);
       }
     },

@@ -92,6 +92,20 @@ function createServer(dependencies) {
   );
 
   server.tool(
+    'keyboard_type_with_key_press',
+    'Types text while holding a keyboard key or key combination',
+    {
+      text: z.string().describe('Text to type'),
+      key: z.string().describe("Key to hold while typing (e.g., 'shift', 'a', 'control')"),
+      modifiers: z
+        .array(z.enum(['control', 'shift', 'alt', 'command']))
+        .default([])
+        .describe('Modifier keys to hold while pressing the key'),
+    },
+    async (params) => keyboardTools.keyboardTypeWithKeyPress(params),
+  );
+
+  server.tool(
     'mouse_click',
     'Performs a mouse click',
     {
@@ -119,6 +133,21 @@ function createServer(dependencies) {
       y: z.number().describe('Y coordinate'),
     },
     async (params) => mouseTools.mouseDrag(params),
+  );
+
+  server.tool(
+    'mouse_drag_with_key_press',
+    'Drags the mouse to specified coordinates while holding a keyboard key or key combination',
+    {
+      x: z.number().describe('X coordinate'),
+      y: z.number().describe('Y coordinate'),
+      key: z.string().describe("Key to hold while dragging (e.g., 'shift', 'a', 'control')"),
+      modifiers: z
+        .array(z.enum(['control', 'shift', 'alt', 'command']))
+        .default([])
+        .describe('Modifier keys to hold while pressing the key'),
+    },
+    async (params) => mouseTools.mouseDragWithKeyPress(params),
   );
 
   server.tool('get_mouse_position', 'Gets the current mouse position', {}, async () => mouseTools.getMousePosition());

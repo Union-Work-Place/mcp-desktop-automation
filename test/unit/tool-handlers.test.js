@@ -351,6 +351,11 @@ test('mouse tools execute operations and apply current-position safe-area checks
   const mouseTools = createMouseTools({
     config: { safeArea: { x: 10, y: 10, width: 40, height: 40 } },
     logger: { error() {} },
+    platform: {
+      getDesktopCapabilities() {
+        return { platform: 'darwin' };
+      },
+    },
     robotAdapter: {
       getScreenSize() {
         return { width: 100, height: 100 };
@@ -364,6 +369,9 @@ test('mouse tools execute operations and apply current-position safe-area checks
       dragMouse(x, y) {
         calls.push(['dragMouse', x, y]);
       },
+      toggleKey(key, action, modifiers) {
+        calls.push(['toggleKey', key, action, modifiers]);
+      },
       scrollMouse(x, y) {
         calls.push(['scrollMouse', x, y]);
       },
@@ -375,16 +383,26 @@ test('mouse tools execute operations and apply current-position safe-area checks
 
   const moveResponse = await mouseTools.mouseMove({ x: 25, y: 25 });
   const dragResponse = await mouseTools.mouseDrag({ x: 30, y: 30 });
+  const combinedDragResponse = await mouseTools.mouseDragWithKeyPress({
+    x: 35,
+    y: 35,
+    key: 'Esc',
+    modifiers: ['primary', 'option'],
+  });
   const scrollResponse = await mouseTools.mouseScroll({ y: -2 });
   const clickResponse = await mouseTools.mouseClick({ button: 'right', double: true });
 
   assert.equal(moveResponse.isError, false);
   assert.equal(dragResponse.isError, false);
+  assert.equal(combinedDragResponse.isError, false);
   assert.equal(scrollResponse.isError, false);
   assert.equal(clickResponse.isError, false);
   assert.deepEqual(calls, [
     ['moveMouse', 25, 25],
     ['dragMouse', 30, 30],
+    ['toggleKey', 'escape', 'down', ['command', 'alt']],
+    ['dragMouse', 35, 35],
+    ['toggleKey', 'escape', 'up', ['command', 'alt']],
     ['scrollMouse', 0, -2],
     ['mouseClick', 'right', true],
   ]);
@@ -415,6 +433,66 @@ test('mouse tools execute operations and apply current-position safe-area checks
   assert.equal(unsafeClick.isError, true);
   assert.equal(getPayload(unsafeScroll).error.code, 'PERMISSION_DENIED');
   assert.equal(getPayload(unsafeClick).error.code, 'PERMISSION_DENIED');
+});
+
+test('combined keyboard and mouse actions release held keys on completion and failure', async () => {
+  const keyboardCalls = [];
+  const keyboardTools = createKeyboardTools({
+    config: {},
+    logger: { error() {} },
+    platform: {
+      getDesktopCapabilities() {
+        return { platform: 'linux' };
+      },
+    },
+    robotAdapter: {
+      toggleKey(key, action, modifiers) {
+        keyboardCalls.push(['toggleKey', key, action, modifiers]);
+      },
+      typeString(text) {
+        keyboardCalls.push(['typeString', text]);
+      },
+    },
+  });
+  const mouseCalls = [];
+  const mouseTools = createMouseTools({
+    config: {},
+    logger: { error() {} },
+    platform: {
+      getDesktopCapabilities() {
+        return { platform: 'linux' };
+      },
+    },
+    robotAdapter: {
+      getScreenSize() {
+        return { width: 100, height: 100 };
+      },
+      toggleKey(key, action, modifiers) {
+        mouseCalls.push(['toggleKey', key, action, modifiers]);
+      },
+      dragMouse() {
+        mouseCalls.push(['dragMouse']);
+        throw new Error('drag unavailable');
+      },
+    },
+  });
+
+  const typeResponse = await keyboardTools.keyboardTypeWithKeyPress({ text: 'Hello', key: 'Shift' });
+  const dragResponse = await mouseTools.mouseDragWithKeyPress({ x: 20, y: 20, key: 'control' });
+
+  assert.equal(typeResponse.isError, false);
+  assert.deepEqual(keyboardCalls, [
+    ['toggleKey', 'shift', 'down', []],
+    ['typeString', 'Hello'],
+    ['toggleKey', 'shift', 'up', []],
+  ]);
+  assert.equal(dragResponse.isError, true);
+  assert.equal(getPayload(dragResponse).error.code, 'AUTOMATION_UNAVAILABLE');
+  assert.deepEqual(mouseCalls, [
+    ['toggleKey', 'control', 'down', []],
+    ['dragMouse'],
+    ['toggleKey', 'control', 'up', []],
+  ]);
 });
 
 test('keyboard and mouse tools honor input policy flags', async () => {

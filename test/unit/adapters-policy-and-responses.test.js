@@ -106,6 +106,9 @@ test('robotjs adapter delegates calls to provided implementation', () => {
     keyTap(key, modifiers) {
       calls.push(['keyTap', key, modifiers]);
     },
+    keyToggle(key, action, modifiers) {
+      calls.push(['keyToggle', key, action, modifiers]);
+    },
   });
 
   assert.deepEqual(adapter.getScreenSize(), { width: 1, height: 2 });
@@ -116,6 +119,7 @@ test('robotjs adapter delegates calls to provided implementation', () => {
   adapter.mouseClick('left', true);
   adapter.typeString('hello');
   adapter.pressKey('a', ['control']);
+  adapter.toggleKey('shift', 'down', ['control']);
 
   assert.deepEqual(calls, [
     ['getScreenSize'],
@@ -126,5 +130,6 @@ test('robotjs adapter delegates calls to provided implementation', () => {
     ['mouseClick', 'left', true],
     ['typeString', 'hello'],
     ['keyTap', 'a', ['control']],
+    ['keyToggle', 'shift', 'down', ['control']],
   ]);
 });
