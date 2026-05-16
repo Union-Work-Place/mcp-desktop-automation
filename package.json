@@ -4,9 +4,17 @@
   "description": "Model Context Protocol server for desktop automation",
   "main": "server.js",
   "bin": "./launch.js",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node ./launch.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "node ./scripts/run-with-compatible-node.js ./node_modules/eslint/bin/eslint.js .",
+    "format": "prettier --write \"*.{js,json,md}\" \".github/workflows/*.{yml,yaml}\" \"docs/**/*.md\" \"test/**/*.js\"",
+    "test": "node ./scripts/run-with-compatible-node.js --test test/**/*.test.js",
+    "test:unit": "node ./scripts/run-with-compatible-node.js --test test/unit/**/*.test.js",
+    "test:contract": "node ./scripts/run-with-compatible-node.js --test test/contract/**/*.test.js",
+    "test:smoke": "node ./scripts/run-with-compatible-node.js --test test/smoke/**/*.test.js"
   },
   "keywords": [
     "mcp",
@@ -31,5 +39,9 @@
     "screenshot-desktop": "^1.15.0",
     "ws": "^8.14.2",
     "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "eslint": "^9.27.0",
+    "prettier": "^3.5.3"
   }
 }

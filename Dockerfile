@@ -34,4 +34,4 @@ USER appuser
 ENV NODE_ENV=production
 
 # This project runs as a stdio MCP server; no HTTP port is required
-CMD ["node", "server.js"]
+CMD ["node", "launch.js"]

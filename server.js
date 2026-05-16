@@ -40,7 +40,7 @@ function toMcpTextResponse(obj, isError = false) {
 
 // Implementation of capabilities
 const capabilityImplementations = {
-  screen_capture: async (params = {}) => {
+  screen_capture: async (_params = {}) => {
     if (process.platform === 'linux' && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) {
       return toMcpTextResponse({
         success: false,
@@ -178,7 +178,7 @@ server.tool("mouse_move", "Moves the mouse to specified coordinates", {
 server.resource(
   "screenshot-list",
   "screenshot://list",
-  async (uri) => {
+  async (_uri) => {
     const result = {
       contents: [
         ...Object.keys(screenshots).map(name => ({

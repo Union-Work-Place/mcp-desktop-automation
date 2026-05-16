@@ -1,4 +1,3 @@
 node_modules/
-.vscode/*
-!.vscode/mcp.json
+package-lock.json
 temp_node.tar.xz
