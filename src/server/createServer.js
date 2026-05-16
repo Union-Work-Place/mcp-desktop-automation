@@ -34,7 +34,16 @@ function createServer(dependencies) {
 
   server.tool('get_screen_size', 'Gets the screen dimensions', {}, async () => screenTools.getScreenSize());
 
-  server.tool('screen_capture', 'Captures the current screen content', {}, async () => screenTools.screenCapture());
+  server.tool(
+    'screen_capture',
+    'Captures the current screen content',
+    {
+      includeImage: z.boolean().optional().describe('Whether to embed the image inline in the response'),
+      format: z.enum(['png', 'jpg', 'jpeg']).default('png').describe('Requested image format'),
+      displayId: z.union([z.string(), z.number()]).optional().describe('Optional display identifier'),
+    },
+    async (params) => screenTools.screenCapture(params),
+  );
 
   server.tool(
     'keyboard_press',
@@ -83,11 +92,13 @@ function createServer(dependencies) {
     logger.info('Returning screenshot list:', screenshots.length);
 
     return {
-      contents: screenshots.map((screenshot) => ({
-        uri: `screenshot://${screenshot.id}`,
-        mimeType: screenshot.mimeType,
-        blob: screenshot.data,
-      })),
+      contents: [
+        {
+          uri: 'screenshot://list',
+          mimeType: 'application/json',
+          text: JSON.stringify({ screenshots }),
+        },
+      ],
     };
   });
 

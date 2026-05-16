@@ -330,13 +330,13 @@ Definition of Done:
 
 ## Proposed Workflow
 
-1. First, Phase 0, to get the baseline and safety net.
-2. Then Phases 1 and 2, along with small PRs: architecture plus a unified error model.
-3. After that, Phases 3 and 4, because security and screenshots pose the highest risk.
-4. Then Phases 5 and 6 for cross-platform and Win11.
-5. Next, Phases 7 and 8: dependencies and full test coverage.
-6. Then Phases 9-11: diagnostics, feature expansion, and documentation.
-7. Finally, Phase 12 for release readiness.
+1. [x] First, Phase 0, to get the baseline and safety net.
+2. [x] Then Phases 1 and 2, along with small PRs: architecture plus a unified error model.
+3. [x] After that, Phases 3 and 4, because security and screenshots pose the highest risk.
+4. [ ] Then Phases 5 and 6 for cross-platform and Win11.
+5. [ ] Next, Phases 7 and 8: dependencies and full test coverage.
+6. [ ] Then Phases 9-11: diagnostics, feature expansion, and documentation.
+7. [ ] Finally, Phase 12 for release readiness.
 
 ## First Specific Tasks for the Next Phase
 

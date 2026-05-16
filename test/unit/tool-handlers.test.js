@@ -13,7 +13,7 @@ function getPayload(response) {
 test('screen tools are testable without MCP process', async () => {
   let resourceNotificationCount = 0;
   const tools = createScreenTools({
-    config: { screenCaptureTimeoutMs: 100 },
+    config: { screenCaptureTimeoutMs: 100, screenCaptureInlineByDefault: false, screenCaptureMaxInlineBytes: 1024 },
     logger: { error() {} },
     platform: {
       getScreenCaptureAvailability() {
@@ -31,8 +31,18 @@ test('screen tools are testable without MCP process', async () => {
       },
     },
     screenshotStore: {
-      save(data) {
-        return { id: 'screenshot-1', data, mimeType: 'image/png', createdAt: 'now' };
+      save(data, metadata) {
+        return {
+          id: 'screenshot-1',
+          data,
+          mimeType: metadata.mimeType,
+          createdAt: 'now',
+          expiresAt: 'later',
+          byteSize: 10,
+          width: metadata.width,
+          height: metadata.height,
+          displayId: metadata.displayId,
+        };
       },
     },
     async notifyResourcesChanged() {
@@ -41,15 +51,61 @@ test('screen tools are testable without MCP process', async () => {
   });
 
   const screenSizeResponse = await tools.getScreenSize();
-  const screenshotResponse = await tools.screenCapture();
+  const screenshotResponse = await tools.screenCapture({ includeImage: true });
 
   assert.deepEqual(getPayload(screenSizeResponse), {
     success: true,
     result: { width: 100, height: 50 },
   });
   assert.equal(getPayload(screenshotResponse).success, true);
+  assert.equal(getPayload(screenshotResponse).inlineImageIncluded, true);
   assert.equal(screenshotResponse.content[1].type, 'image');
   assert.equal(resourceNotificationCount, 1);
+});
+
+test('screen_capture returns metadata and resource link when inline image is disabled', async () => {
+  const tools = createScreenTools({
+    config: { screenCaptureTimeoutMs: 100, screenCaptureInlineByDefault: false, screenCaptureMaxInlineBytes: 4 },
+    logger: { error() {} },
+    platform: {
+      getScreenCaptureAvailability() {
+        return { available: true };
+      },
+    },
+    robotAdapter: {
+      getScreenSize() {
+        return { width: 10, height: 10 };
+      },
+    },
+    screenshotAdapter: {
+      async capture() {
+        return Buffer.from('longer-image');
+      },
+    },
+    screenshotStore: {
+      save() {
+        return {
+          id: 'screenshot-2',
+          data: 'data',
+          mimeType: 'image/png',
+          createdAt: 'now',
+          expiresAt: 'later',
+          byteSize: 20,
+          width: 10,
+          height: 10,
+          displayId: null,
+        };
+      },
+    },
+  });
+
+  const response = await tools.screenCapture();
+  const payload = getPayload(response);
+
+  assert.equal(response.isError, false);
+  assert.equal(response.content.length, 1);
+  assert.equal(payload.resourceUri, 'screenshot://screenshot-2');
+  assert.equal(payload.inlineImageIncluded, false);
 });
 
 test('screen_capture returns DISPLAY_UNAVAILABLE in headless Linux mode', async () => {
@@ -80,7 +136,7 @@ test('screen_capture returns DISPLAY_UNAVAILABLE in headless Linux mode', async 
 
 test('screen_capture returns SCREENSHOT_FAILED on timeout', async () => {
   const tools = createScreenTools({
-    config: { screenCaptureTimeoutMs: 5 },
+    config: { screenCaptureTimeoutMs: 5, screenCaptureInlineByDefault: false, screenCaptureMaxInlineBytes: 1024 },
     logger: { error() {} },
     platform: {
       getScreenCaptureAvailability() {
@@ -109,10 +165,78 @@ test('screen_capture returns SCREENSHOT_FAILED on timeout', async () => {
   assert.match(payload.error.message, /timed out/i);
 });
 
-test('mouse and keyboard tools return MCP errors on adapter failures', async () => {
+test('mouse tools enforce bounds, safe area, and dry-run policy', async () => {
+  let moveCount = 0;
+  let clickCount = 0;
   const mouseTools = createMouseTools({
+    config: { dryRun: true, safeArea: { x: 10, y: 10, width: 50, height: 50 } },
     logger: { error() {} },
     robotAdapter: {
+      getScreenSize() {
+        return { width: 100, height: 100 };
+      },
+      getMousePosition() {
+        return { x: 20, y: 20 };
+      },
+      moveMouse() {
+        moveCount += 1;
+      },
+      mouseClick() {
+        clickCount += 1;
+      },
+    },
+  });
+
+  const dryRunMove = await mouseTools.mouseMove({ x: 25, y: 25 });
+  const outOfBoundsMove = await mouseTools.mouseMove({ x: 500, y: 10 });
+  const dryRunClick = await mouseTools.mouseClick({ button: 'left', double: false });
+
+  assert.equal(getPayload(dryRunMove).dryRun, true);
+  assert.equal(getPayload(dryRunClick).dryRun, true);
+  assert.equal(outOfBoundsMove.isError, true);
+  assert.equal(getPayload(outOfBoundsMove).error.code, 'INVALID_COORDINATES');
+  assert.equal(moveCount, 0);
+  assert.equal(clickCount, 0);
+});
+
+test('keyboard and mouse tools honor input policy flags', async () => {
+  const mouseTools = createMouseTools({
+    config: { enableInput: false },
+    logger: { error() {} },
+    robotAdapter: {
+      getScreenSize() {
+        return { width: 10, height: 10 };
+      },
+      moveMouse() {},
+      mouseClick() {},
+    },
+  });
+  const keyboardTools = createKeyboardTools({
+    config: { readOnly: true },
+    logger: { error() {} },
+    robotAdapter: {
+      typeString() {},
+      pressKey() {},
+    },
+  });
+
+  const moveResponse = await mouseTools.mouseMove({ x: 1, y: 1 });
+  const typeResponse = await keyboardTools.keyboardType({ text: 'hello' });
+
+  assert.equal(moveResponse.isError, true);
+  assert.equal(typeResponse.isError, true);
+  assert.equal(getPayload(moveResponse).error.code, 'PERMISSION_DENIED');
+  assert.equal(getPayload(typeResponse).error.code, 'PERMISSION_DENIED');
+});
+
+test('mouse and keyboard tools return MCP errors on adapter failures', async () => {
+  const mouseTools = createMouseTools({
+    config: {},
+    logger: { error() {} },
+    robotAdapter: {
+      getScreenSize() {
+        return { width: 100, height: 50 };
+      },
       moveMouse() {
         throw new Error('mouse unavailable');
       },
@@ -122,6 +246,7 @@ test('mouse and keyboard tools return MCP errors on adapter failures', async () 
     },
   });
   const keyboardTools = createKeyboardTools({
+    config: {},
     logger: { error() {} },
     robotAdapter: {
       typeString() {

@@ -11,14 +11,15 @@ const { createScreenshotStore } = require('./src/domain/screenshots');
 const { createServer } = require('./src/server/createServer');
 
 async function main() {
+  const config = createConfig(process.env);
   const server = createServer({
     version: packageJson.version,
-    config: createConfig(process.env),
+    config,
     logger: console,
     platform: createPlatformAdapter({ env: process.env, platform: process.platform }),
     robotAdapter: createRobotjsAdapter(),
     screenshotAdapter: createScreenshotAdapter(),
-    screenshotStore: createScreenshotStore(),
+    screenshotStore: createScreenshotStore(config),
   });
 
   const transport = new StdioServerTransport();

@@ -1,13 +1,21 @@
 const { ErrorCodes, toAutomationError } = require('../domain/errors');
+const { assertToolAllowed } = require('../domain/policy');
 const { errorResponse, okResponse } = require('../server/mcpResponses');
 
 function createKeyboardTools(dependencies) {
+  const config = dependencies.config || {};
   const logger = dependencies.logger || console;
   const robotAdapter = dependencies.robotAdapter;
 
   return {
     async keyboardType(params) {
       try {
+        assertToolAllowed('keyboard_type', config, { requiresInput: true });
+
+        if (config.dryRun) {
+          return okResponse({ dryRun: true });
+        }
+
         robotAdapter.typeString(params.text);
         return okResponse();
       } catch (error) {
@@ -26,6 +34,12 @@ function createKeyboardTools(dependencies) {
       const settings = Object.assign({ modifiers: [] }, params || {});
 
       try {
+        assertToolAllowed('keyboard_press', config, { requiresInput: true });
+
+        if (config.dryRun) {
+          return okResponse({ dryRun: true });
+        }
+
         robotAdapter.pressKey(settings.key, settings.modifiers);
         return okResponse();
       } catch (error) {

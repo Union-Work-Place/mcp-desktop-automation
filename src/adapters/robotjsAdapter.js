@@ -5,6 +5,9 @@ function createRobotjsAdapter() {
     getScreenSize() {
       return robot.getScreenSize();
     },
+    getMousePosition() {
+      return robot.getMousePos();
+    },
     moveMouse(x, y) {
       robot.moveMouse(x, y);
     },

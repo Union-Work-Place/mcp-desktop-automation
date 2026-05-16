@@ -57,6 +57,22 @@ test('screen_capture returns MCP error without closing connection on headless Li
   }
 });
 
+test('screenshot list resource returns metadata JSON without blob payloads', async () => {
+  const { client, transport } = await createConnectedClient();
+
+  try {
+    const result = await client.readResource({ uri: 'screenshot://list' });
+    const payload = JSON.parse(result.contents[0].text);
+
+    assert.ok(Array.isArray(payload.screenshots));
+    if (payload.screenshots[0]) {
+      assert.equal('data' in payload.screenshots[0], false);
+    }
+  } finally {
+    await transport.close();
+  }
+});
+
 test('reading unknown screenshot resource fails gracefully', async () => {
   const { client, transport } = await createConnectedClient();
 

@@ -1,13 +1,25 @@
 const { ErrorCodes, toAutomationError } = require('../domain/errors');
+const { assertCoordinatesInBounds, assertPointInSafeArea, assertToolAllowed } = require('../domain/policy');
 const { errorResponse, okResponse } = require('../server/mcpResponses');
 
 function createMouseTools(dependencies) {
+  const config = dependencies.config || {};
   const logger = dependencies.logger || console;
   const robotAdapter = dependencies.robotAdapter;
 
   return {
     async mouseMove(params) {
       try {
+        assertToolAllowed('mouse_move', config, { requiresInput: true });
+
+        const screenSize = robotAdapter.getScreenSize();
+        assertCoordinatesInBounds(params, screenSize);
+        assertPointInSafeArea(params, config.safeArea);
+
+        if (config.dryRun) {
+          return okResponse({ dryRun: true });
+        }
+
         robotAdapter.moveMouse(params.x, params.y);
         return okResponse();
       } catch (error) {
@@ -26,6 +38,16 @@ function createMouseTools(dependencies) {
       const settings = Object.assign({ button: 'left', double: false }, params || {});
 
       try {
+        assertToolAllowed('mouse_click', config, { requiresInput: true });
+
+        if (config.safeArea && typeof robotAdapter.getMousePosition === 'function') {
+          assertPointInSafeArea(robotAdapter.getMousePosition(), config.safeArea);
+        }
+
+        if (config.dryRun) {
+          return okResponse({ dryRun: true });
+        }
+
         robotAdapter.mouseClick(settings.button, settings.double);
         return okResponse();
       } catch (error) {

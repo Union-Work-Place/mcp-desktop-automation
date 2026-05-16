@@ -1,4 +1,7 @@
+const { clearTimeout, setTimeout } = require('node:timers');
+
 const { ErrorCodes, toAutomationError } = require('../domain/errors');
+const { assertToolAllowed } = require('../domain/policy');
 const { errorResponse, imageResponse, okResponse } = require('../server/mcpResponses');
 
 function createScreenTools(dependencies) {
@@ -10,22 +13,31 @@ function createScreenTools(dependencies) {
   const notifyResourcesChanged = dependencies.notifyResourcesChanged || (async () => {});
   const logger = dependencies.logger || console;
 
-  async function captureWithTimeout() {
+  async function captureWithTimeout(options) {
     const timeoutMs = config.screenCaptureTimeoutMs || 15000;
 
-    return Promise.race([
-      screenshotAdapter.capture(),
-      new Promise((_, reject) => {
-        setTimeout(() => {
-          reject(new Error(`Screen capture timed out after ${timeoutMs}ms.`));
-        }, timeoutMs);
-      }),
-    ]);
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`Screen capture timed out after ${timeoutMs}ms.`));
+      }, timeoutMs);
+
+      screenshotAdapter
+        .capture(options)
+        .then((result) => {
+          clearTimeout(timer);
+          resolve(result);
+        })
+        .catch((error) => {
+          clearTimeout(timer);
+          reject(error);
+        });
+    });
   }
 
   return {
     async getScreenSize() {
       try {
+        assertToolAllowed('get_screen_size', config);
         return okResponse({ result: robotAdapter.getScreenSize() });
       } catch (error) {
         const automationError = toAutomationError(
@@ -39,29 +51,64 @@ function createScreenTools(dependencies) {
       }
     },
 
-    async screenCapture() {
+    async screenCapture(params) {
+      const settings = Object.assign(
+        {
+          includeImage: config.screenCaptureInlineByDefault,
+          format: 'png',
+        },
+        params || {},
+      );
+
+      try {
+        assertToolAllowed('screen_capture', config);
+      } catch (error) {
+        return errorResponse(error.code, error.message, error.details);
+      }
+
       const availability = platform.getScreenCaptureAvailability();
       if (!availability.available) {
         return errorResponse(availability.code, availability.message);
       }
 
       try {
-        const imageBuffer = await captureWithTimeout();
-        const screenshot = screenshotStore.save(imageBuffer.toString('base64'));
+        const imageBuffer = await captureWithTimeout(settings);
+        const screenSize = robotAdapter.getScreenSize();
+        const mimeType = settings.format === 'jpg' || settings.format === 'jpeg' ? 'image/jpeg' : 'image/png';
+        const screenshot = screenshotStore.save(imageBuffer.toString('base64'), {
+          mimeType,
+          width: screenSize.width,
+          height: screenSize.height,
+          format: settings.format,
+          displayId: settings.displayId,
+        });
 
         await notifyResourcesChanged();
 
-        return imageResponse(
-          {
-            screenshotId: screenshot.id,
-            createdAt: screenshot.createdAt,
-            message: `Screenshot ${screenshot.id} taken.`,
-          },
-          {
+        const payload = {
+          screenshotId: screenshot.id,
+          resourceUri: `screenshot://${screenshot.id}`,
+          createdAt: screenshot.createdAt,
+          expiresAt: screenshot.expiresAt,
+          mimeType: screenshot.mimeType,
+          byteSize: screenshot.byteSize,
+          width: screenshot.width,
+          height: screenshot.height,
+          displayId: screenshot.displayId,
+          inlineImageIncluded: false,
+          message: `Screenshot ${screenshot.id} taken.`,
+        };
+
+        if (settings.includeImage && screenshot.byteSize <= config.screenCaptureMaxInlineBytes) {
+          payload.inlineImageIncluded = true;
+
+          return imageResponse(payload, {
             mimeType: screenshot.mimeType,
             data: screenshot.data,
-          },
-        );
+          });
+        }
+
+        return okResponse(payload);
       } catch (error) {
         const automationError = toAutomationError(
           error,
