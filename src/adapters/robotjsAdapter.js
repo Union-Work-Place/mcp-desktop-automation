@@ -1,40 +1,42 @@
 const robot = require('robotjs');
 
-function createRobotjsAdapter() {
+function createRobotjsAdapter(implementation) {
+  const robotApi = implementation || robot;
+
   return {
     getScreenSize() {
-      return robot.getScreenSize();
+      return robotApi.getScreenSize();
     },
     getMousePosition() {
-      return robot.getMousePos();
+      return robotApi.getMousePos();
     },
     moveMouse(x, y) {
-      robot.moveMouse(x, y);
+      robotApi.moveMouse(x, y);
     },
     dragMouse(x, y) {
-      robot.dragMouse(x, y);
+      robotApi.dragMouse(x, y);
     },
     scrollMouse(x, y) {
-      robot.scrollMouse(x, y);
+      robotApi.scrollMouse(x, y);
     },
     mouseClick(button, isDoubleClick) {
       if (isDoubleClick) {
-        robot.mouseClick(button, isDoubleClick);
+        robotApi.mouseClick(button, isDoubleClick);
         return;
       }
 
-      robot.mouseClick(button);
+      robotApi.mouseClick(button);
     },
     typeString(text) {
-      robot.typeString(text);
+      robotApi.typeString(text);
     },
     pressKey(key, modifiers) {
       if (!modifiers || modifiers.length === 0) {
-        robot.keyTap(key);
+        robotApi.keyTap(key);
         return;
       }
 
-      robot.keyTap(key, modifiers);
+      robotApi.keyTap(key, modifiers);
     },
   };
 }

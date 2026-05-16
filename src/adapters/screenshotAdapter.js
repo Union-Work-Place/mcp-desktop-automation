@@ -1,6 +1,8 @@
 const screenshot = require('screenshot-desktop');
 
-function createScreenshotAdapter() {
+function createScreenshotAdapter(implementation) {
+  const captureScreenshot = implementation || screenshot;
+
   return {
     async capture(options = {}) {
       const captureOptions = {};
@@ -13,7 +15,7 @@ function createScreenshotAdapter() {
         captureOptions.format = options.format;
       }
 
-      return screenshot(captureOptions);
+      return captureScreenshot(captureOptions);
     },
   };
 }
