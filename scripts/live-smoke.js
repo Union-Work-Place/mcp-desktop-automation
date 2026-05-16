@@ -14,14 +14,20 @@ const { createPlatformAdapter } = require('../src/adapters/platform');
 const workspaceRoot = path.resolve(__dirname, '..');
 
 function ensureLinuxWindowCommand(env) {
-  const commandCheck = spawnSync('sh', ['-lc', 'command -v xterm'], {
-    env,
-    encoding: 'utf8',
-  });
+  const candidates = ['xmessage', 'xterm'];
 
-  if (commandCheck.status !== 0) {
-    throw new Error('xterm is required for npm run test:live-smoke on Linux.');
+  for (const candidate of candidates) {
+    const commandCheck = spawnSync('sh', ['-lc', 'command -v ' + candidate], {
+      env,
+      encoding: 'utf8',
+    });
+
+    if (commandCheck.status === 0) {
+      return candidate;
+    }
   }
+
+  throw new Error('xmessage or xterm is required for npm run test:live-smoke on Linux.');
 }
 
 function parsePayload(result, toolName) {
@@ -39,6 +45,7 @@ async function main() {
   const runtimeEnvironment = platform.getRuntimeEnvironment();
   const env = Object.assign({}, process.env, runtimeEnvironment);
   const client = new Client({ name: 'mcp-desktop-automation-live-smoke', version: '1.0.0' }, { capabilities: {} });
+  const triggerClient = new Client({ name: 'mcp-desktop-automation-live-smoke-trigger', version: '1.0.0' }, { capabilities: {} });
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: [path.join(workspaceRoot, 'launch.js')],
@@ -46,7 +53,14 @@ async function main() {
     env,
     stderr: 'pipe',
   });
-  let smokeWindow = null;
+  const triggerTransport = new StdioClientTransport({
+    command: process.execPath,
+    args: [path.join(workspaceRoot, 'launch.js')],
+    cwd: workspaceRoot,
+    env,
+    stderr: 'pipe',
+  });
+  const smokeProcesses = [];
 
   try {
     await client.connect(transport);
@@ -68,23 +82,39 @@ async function main() {
 
     let waitForScreenChange = null;
     if (process.platform === 'linux') {
-      ensureLinuxWindowCommand(env);
+      const smokeCommand = ensureLinuxWindowCommand(env);
+      await triggerClient.connect(triggerTransport);
+
       waitForScreenChange = client.callTool({
         name: 'wait_for_screen_change',
         arguments: { includeImage: false, format: 'png', timeoutMs: 10000, pollIntervalMs: 250 },
       });
 
       await delay(1500);
-      smokeWindow = spawn('xterm', ['-geometry', '80x24+100+80', '-title', 'MCP-Live-Smoke'], {
-        env,
-        stdio: 'ignore',
-      });
+      if (smokeCommand === 'xmessage') {
+        smokeProcesses.push(
+          spawn('xmessage', ['-center', '-buttons', 'ok', 'MCP Live Smoke Change'], {
+            env,
+            stdio: 'ignore',
+          }),
+        );
+      } else {
+        smokeProcesses.push(
+          spawn('xterm', ['-geometry', '80x24+100+80', '-title', 'MCP-Live-Smoke'], {
+            env,
+            stdio: 'ignore',
+          }),
+        );
+      }
 
       await delay(1000);
-      spawn('xdg-open', ['/tmp'], {
-        env,
-        stdio: 'ignore',
-      });
+      parsePayload(
+        await triggerClient.callTool({
+          name: 'keyboard_press',
+          arguments: { key: 'tab', modifiers: ['alt'] },
+        }),
+        'keyboard_press',
+      );
     }
 
     const waitPayload = waitForScreenChange
@@ -117,11 +147,14 @@ async function main() {
       ) + '\n',
     );
   } finally {
-    if (smokeWindow && smokeWindow.pid) {
-      smokeWindow.kill('SIGTERM');
+    for (const smokeProcess of smokeProcesses) {
+      if (smokeProcess && smokeProcess.pid) {
+        smokeProcess.kill('SIGTERM');
+      }
     }
 
     await transport.close();
+    await triggerTransport.close();
   }
 }
 

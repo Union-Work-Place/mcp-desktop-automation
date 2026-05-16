@@ -73,7 +73,7 @@ function validate(files) {
   var names = files.map(function (file) {
     return file.path;
   });
-  var required = ['launch.js', 'launch.cmd', 'launch.sh', 'server.js', 'README.md', 'LICENSE'];
+  var required = ['launch.js', 'launch.cmd', 'launch.sh', 'server.js', 'README.md', 'CHANGELOG.md', 'LICENSE'];
   var forbiddenPrefixes = ['coverage/', 'test/', '.vscode/'];
 
   required.forEach(function (requiredPath) {

@@ -1,12 +1,13 @@
 {
   "name": "mcp-desktop-automation",
-  "version": "0.1.6",
+  "version": "1.0.0",
   "description": "Model Context Protocol server for desktop automation",
   "main": "server.js",
   "bin": "./launch.js",
   "files": [
     "LICENSE",
     "README.md",
+    "CHANGELOG.md",
     "launch.js",
     "launch.sh",
     "launch.cmd",
