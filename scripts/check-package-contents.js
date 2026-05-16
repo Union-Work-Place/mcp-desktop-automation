@@ -6,7 +6,20 @@ var childProcess = require('child_process');
 var path = require('path');
 
 var PROJECT_ROOT = path.resolve(__dirname, '..');
-var npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+
+function getPackCommand(platform, env) {
+  if (platform === 'win32') {
+    return {
+      command: (env && (env.ComSpec || env.comspec)) || 'cmd.exe',
+      args: ['/d', '/s', '/c', 'npm pack --json --dry-run'],
+    };
+  }
+
+  return {
+    command: 'npm',
+    args: ['pack', '--json', '--dry-run'],
+  };
+}
 
 function validate(files) {
   var names = files.map(function (file) {
@@ -35,9 +48,10 @@ function validate(files) {
 }
 
 function main() {
+  var packCommand = getPackCommand(process.platform, process.env);
   var output = childProcess.execFileSync(
-    npmCommand,
-    ['pack', '--json', '--dry-run'],
+    packCommand.command,
+    packCommand.args,
     { cwd: PROJECT_ROOT, encoding: 'utf8' },
   );
   var packResult = JSON.parse(output)[0];
@@ -46,4 +60,12 @@ function main() {
   process.stdout.write('Package validation passed for ' + packResult.filename + '\n');
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  getPackCommand: getPackCommand,
+  main: main,
+  validate: validate,
+};
