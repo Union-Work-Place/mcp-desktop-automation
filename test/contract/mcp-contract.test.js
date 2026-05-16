@@ -31,3 +31,38 @@ test('stdio MCP server exposes tools and returns screen size', async () => {
     await transport.close();
   }
 });
+
+test('screen_capture returns MCP error without closing connection on headless Linux', async (t) => {
+  if (process.platform !== 'linux') {
+    t.skip('Linux-specific headless validation');
+    return;
+  }
+
+  const { client, transport } = await createConnectedClient({
+    env: {
+      DISPLAY: '',
+      WAYLAND_DISPLAY: '',
+    },
+  });
+
+  try {
+    const result = await client.callTool({ name: 'screen_capture', arguments: {} });
+    const payload = JSON.parse(result.content[0].text);
+
+    assert.equal(result.isError, true);
+    assert.equal(payload.success, false);
+    assert.equal(payload.error.code, 'DISPLAY_UNAVAILABLE');
+  } finally {
+    await transport.close();
+  }
+});
+
+test('reading unknown screenshot resource fails gracefully', async () => {
+  const { client, transport } = await createConnectedClient();
+
+  try {
+    await assert.rejects(client.readResource({ uri: 'screenshot://missing' }), /SCREENSHOT_NOT_FOUND|not found/i);
+  } finally {
+    await transport.close();
+  }
+});

@@ -5,12 +5,13 @@ const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio
 
 const workspaceRoot = path.resolve(__dirname, '..', '..');
 
-async function createConnectedClient() {
+async function createConnectedClient(options = {}) {
   const client = new Client({ name: 'mcp-desktop-automation-test', version: '1.0.0' }, { capabilities: {} });
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: [path.join(workspaceRoot, 'launch.js')],
     cwd: workspaceRoot,
+    env: options.env,
     stderr: 'pipe',
   });
 

@@ -13,6 +13,7 @@ module.exports = [
         module: 'readonly',
         process: 'readonly',
         require: 'readonly',
+        setTimeout: 'readonly',
       },
     },
     rules: {
