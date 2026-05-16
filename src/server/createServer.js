@@ -32,6 +32,13 @@ function createServer(dependencies) {
   const mouseTools = createMouseTools(toolDependencies);
   const screenTools = createScreenTools(toolDependencies);
 
+  server.tool(
+    'get_desktop_capabilities',
+    'Reports desktop automation capabilities and current platform policy settings',
+    {},
+    async () => screenTools.getDesktopCapabilities(),
+  );
+
   server.tool('get_screen_size', 'Gets the screen dimensions', {}, async () => screenTools.getScreenSize());
 
   server.tool(
@@ -85,6 +92,28 @@ function createServer(dependencies) {
       y: z.number().describe('Y coordinate'),
     },
     async (params) => mouseTools.mouseMove(params),
+  );
+
+  server.tool(
+    'mouse_drag',
+    'Drags the mouse to specified coordinates',
+    {
+      x: z.number().describe('X coordinate'),
+      y: z.number().describe('Y coordinate'),
+    },
+    async (params) => mouseTools.mouseDrag(params),
+  );
+
+  server.tool('get_mouse_position', 'Gets the current mouse position', {}, async () => mouseTools.getMousePosition());
+
+  server.tool(
+    'mouse_scroll',
+    'Scrolls the mouse wheel by the specified deltas',
+    {
+      x: z.number().default(0).describe('Horizontal scroll delta'),
+      y: z.number().default(0).describe('Vertical scroll delta'),
+    },
+    async (params) => mouseTools.mouseScroll(params),
   );
 
   server.resource('screenshot-list', 'screenshot://list', async () => {

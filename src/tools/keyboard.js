@@ -1,4 +1,5 @@
 const { ErrorCodes, toAutomationError } = require('../domain/errors');
+const { normalizeKey, normalizeModifiers } = require('../domain/keyboard');
 const { assertToolAllowed } = require('../domain/policy');
 const { errorResponse, okResponse } = require('../server/mcpResponses');
 
@@ -6,6 +7,7 @@ function createKeyboardTools(dependencies) {
   const config = dependencies.config || {};
   const logger = dependencies.logger || console;
   const robotAdapter = dependencies.robotAdapter;
+  const platform = dependencies.platform;
 
   return {
     async keyboardType(params) {
@@ -36,11 +38,16 @@ function createKeyboardTools(dependencies) {
       try {
         assertToolAllowed('keyboard_press', config, { requiresInput: true });
 
+        const normalizedKey = normalizeKey(settings.key);
+        const normalizedModifiers = normalizeModifiers(settings.modifiers, platform && platform.getDesktopCapabilities
+          ? platform.getDesktopCapabilities(config).platform
+          : process.platform);
+
         if (config.dryRun) {
-          return okResponse({ dryRun: true });
+          return okResponse({ dryRun: true, key: normalizedKey, modifiers: normalizedModifiers });
         }
 
-        robotAdapter.pressKey(settings.key, settings.modifiers);
+        robotAdapter.pressKey(normalizedKey, normalizedModifiers);
         return okResponse();
       } catch (error) {
         const automationError = toAutomationError(

@@ -11,6 +11,12 @@ function createRobotjsAdapter() {
     moveMouse(x, y) {
       robot.moveMouse(x, y);
     },
+    dragMouse(x, y) {
+      robot.dragMouse(x, y);
+    },
+    scrollMouse(x, y) {
+      robot.scrollMouse(x, y);
+    },
     mouseClick(button, isDoubleClick) {
       if (isDoubleClick) {
         robot.mouseClick(button, isDoubleClick);
@@ -28,8 +34,7 @@ function createRobotjsAdapter() {
         return;
       }
 
-      robot.keyToggle(key, 'down', modifiers);
-      robot.keyToggle(key, 'up');
+      robot.keyTap(key, modifiers);
     },
   };
 }

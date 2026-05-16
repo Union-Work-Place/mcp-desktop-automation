@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "desktopAutomation": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "/absolute/path/to/mcp-desktop-automation/launch.js"
+      ]
+    }
+  }
+}

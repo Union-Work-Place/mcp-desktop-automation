@@ -7,7 +7,27 @@ function createMouseTools(dependencies) {
   const logger = dependencies.logger || console;
   const robotAdapter = dependencies.robotAdapter;
 
+  function getCurrentMousePosition() {
+    return typeof robotAdapter.getMousePosition === 'function' ? robotAdapter.getMousePosition() : null;
+  }
+
   return {
+    async getMousePosition() {
+      try {
+        assertToolAllowed('get_mouse_position', config);
+        return okResponse({ result: getCurrentMousePosition() });
+      } catch (error) {
+        const automationError = toAutomationError(
+          error,
+          ErrorCodes.AUTOMATION_UNAVAILABLE,
+          'Failed to get mouse position.',
+        );
+
+        logger.error('Error getting mouse position:', automationError);
+        return errorResponse(automationError.code, automationError.message, automationError.details);
+      }
+    },
+
     async mouseMove(params) {
       try {
         assertToolAllowed('mouse_move', config, { requiresInput: true });
@@ -30,7 +50,61 @@ function createMouseTools(dependencies) {
         );
 
         logger.error('Error moving mouse:', automationError);
-        return errorResponse(automationError.code, automationError.message);
+        return errorResponse(automationError.code, automationError.message, automationError.details);
+      }
+    },
+
+    async mouseDrag(params) {
+      try {
+        assertToolAllowed('mouse_drag', config, { requiresInput: true });
+
+        const screenSize = robotAdapter.getScreenSize();
+        assertCoordinatesInBounds(params, screenSize);
+        assertPointInSafeArea(params, config.safeArea);
+
+        if (config.dryRun) {
+          return okResponse({ dryRun: true });
+        }
+
+        robotAdapter.dragMouse(params.x, params.y);
+        return okResponse();
+      } catch (error) {
+        const automationError = toAutomationError(
+          error,
+          ErrorCodes.AUTOMATION_UNAVAILABLE,
+          'Failed to drag the mouse.',
+        );
+
+        logger.error('Error dragging mouse:', automationError);
+        return errorResponse(automationError.code, automationError.message, automationError.details);
+      }
+    },
+
+    async mouseScroll(params) {
+      const settings = Object.assign({ x: 0, y: 0 }, params || {});
+
+      try {
+        assertToolAllowed('mouse_scroll', config, { requiresInput: true });
+
+        if (config.safeArea) {
+          assertPointInSafeArea(getCurrentMousePosition(), config.safeArea);
+        }
+
+        if (config.dryRun) {
+          return okResponse({ dryRun: true });
+        }
+
+        robotAdapter.scrollMouse(settings.x, settings.y);
+        return okResponse();
+      } catch (error) {
+        const automationError = toAutomationError(
+          error,
+          ErrorCodes.AUTOMATION_UNAVAILABLE,
+          'Failed to scroll the mouse.',
+        );
+
+        logger.error('Error scrolling mouse:', automationError);
+        return errorResponse(automationError.code, automationError.message, automationError.details);
       }
     },
 
@@ -58,7 +132,7 @@ function createMouseTools(dependencies) {
         );
 
         logger.error('Error clicking mouse:', automationError);
-        return errorResponse(automationError.code, automationError.message);
+        return errorResponse(automationError.code, automationError.message, automationError.details);
       }
     },
   };

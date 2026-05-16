@@ -168,6 +168,8 @@ test('screen_capture returns SCREENSHOT_FAILED on timeout', async () => {
 test('mouse tools enforce bounds, safe area, and dry-run policy', async () => {
   let moveCount = 0;
   let clickCount = 0;
+  let dragCount = 0;
+  let scrollCount = 0;
   const mouseTools = createMouseTools({
     config: { dryRun: true, safeArea: { x: 10, y: 10, width: 50, height: 50 } },
     logger: { error() {} },
@@ -181,6 +183,12 @@ test('mouse tools enforce bounds, safe area, and dry-run policy', async () => {
       moveMouse() {
         moveCount += 1;
       },
+      dragMouse() {
+        dragCount += 1;
+      },
+      scrollMouse() {
+        scrollCount += 1;
+      },
       mouseClick() {
         clickCount += 1;
       },
@@ -189,14 +197,22 @@ test('mouse tools enforce bounds, safe area, and dry-run policy', async () => {
 
   const dryRunMove = await mouseTools.mouseMove({ x: 25, y: 25 });
   const outOfBoundsMove = await mouseTools.mouseMove({ x: 500, y: 10 });
+  const dryRunDrag = await mouseTools.mouseDrag({ x: 25, y: 25 });
+  const dryRunScroll = await mouseTools.mouseScroll({ x: 0, y: -2 });
+  const mousePosition = await mouseTools.getMousePosition();
   const dryRunClick = await mouseTools.mouseClick({ button: 'left', double: false });
 
   assert.equal(getPayload(dryRunMove).dryRun, true);
+  assert.equal(getPayload(dryRunDrag).dryRun, true);
+  assert.equal(getPayload(dryRunScroll).dryRun, true);
   assert.equal(getPayload(dryRunClick).dryRun, true);
+  assert.deepEqual(getPayload(mousePosition).result, { x: 20, y: 20 });
   assert.equal(outOfBoundsMove.isError, true);
   assert.equal(getPayload(outOfBoundsMove).error.code, 'INVALID_COORDINATES');
   assert.equal(moveCount, 0);
   assert.equal(clickCount, 0);
+  assert.equal(dragCount, 0);
+  assert.equal(scrollCount, 0);
 });
 
 test('keyboard and mouse tools honor input policy flags', async () => {
@@ -271,4 +287,27 @@ test('mouse and keyboard tools return MCP errors on adapter failures', async () 
   assert.equal(getPayload(clickResponse).error.code, 'AUTOMATION_UNAVAILABLE');
   assert.equal(getPayload(typeResponse).error.code, 'AUTOMATION_UNAVAILABLE');
   assert.equal(getPayload(keyResponse).error.code, 'AUTOMATION_UNAVAILABLE');
+});
+
+test('keyboard press normalizes aliases and modifiers', async () => {
+  let pressed = null;
+  const keyboardTools = createKeyboardTools({
+    config: {},
+    logger: { error() {} },
+    platform: {
+      getDesktopCapabilities() {
+        return { platform: 'darwin' };
+      },
+    },
+    robotAdapter: {
+      pressKey(key, modifiers) {
+        pressed = { key, modifiers };
+      },
+    },
+  });
+
+  const response = await keyboardTools.keyboardPress({ key: 'Esc', modifiers: ['primary', 'option', 'cmd'] });
+
+  assert.equal(response.isError, false);
+  assert.deepEqual(pressed, { key: 'escape', modifiers: ['command', 'alt'] });
 });

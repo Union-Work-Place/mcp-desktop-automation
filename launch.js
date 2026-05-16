@@ -11,18 +11,22 @@ var MIN_NODE_MAJOR = 18;
 var SCRIPT_DIR = __dirname;
 var SERVER_JS = path.join(SCRIPT_DIR, 'server.js');
 
+function getPathModule(platform) {
+  return platform === 'win32' ? path.win32 : path.posix;
+}
+
 function parseMajor(version) {
   var match = String(version || '').match(/v?(\d+)/);
   return match ? Number(match[1]) : 0;
 }
 
-function isCompatibleNode(nodePath) {
-  if (!nodePath || !fs.existsSync(nodePath)) {
+function isCompatibleNode(nodePath, existsSync, execFileSync) {
+  if (!nodePath || !existsSync(nodePath)) {
     return false;
   }
 
   try {
-    var output = childProcess.execFileSync(nodePath, ['-p', 'process.versions.node'], {
+    var output = execFileSync(nodePath, ['-p', 'process.versions.node'], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     }).trim();
@@ -44,10 +48,11 @@ function addCandidate(target, seen, value) {
   }
 }
 
-function getPathCandidates() {
+function getPathCandidates(env, platform) {
   var candidates = [];
-  var pathParts = String(process.env.PATH || '').split(path.delimiter);
-  var names = process.platform === 'win32' ? ['node.exe', 'node.cmd', 'nodejs.exe'] : ['node', 'nodejs'];
+  var pathModule = getPathModule(platform);
+  var pathParts = String((env && env.PATH) || '').split(pathModule.delimiter);
+  var names = platform === 'win32' ? ['node.exe', 'node.cmd', 'nodejs.exe'] : ['node', 'nodejs'];
 
   pathParts.forEach(function (entry) {
     if (!entry) {
@@ -55,52 +60,96 @@ function getPathCandidates() {
     }
 
     names.forEach(function (name) {
-      candidates.push(path.join(entry, name));
+      candidates.push(pathModule.join(entry, name));
     });
   });
 
   return candidates;
 }
 
-function getWellKnownCandidates() {
-  var home = os.homedir();
+function expandVersionedNodePaths(baseDir, suffixParts, readdirSync, pathModule) {
+  if (!baseDir) {
+    return [];
+  }
 
-  if (process.platform === 'win32') {
+  try {
+    return readdirSync(baseDir, { withFileTypes: true })
+      .filter(function (entry) {
+        return entry.isDirectory() && /^node-v/i.test(entry.name);
+      })
+      .map(function (entry) {
+        return pathModule.join.apply(pathModule, [baseDir, entry.name].concat(suffixParts));
+      });
+  } catch (_error) {
+    return [];
+  }
+}
+
+function getWellKnownCandidates(options) {
+  var env = options.env || process.env;
+  var platform = options.platform || process.platform;
+  var homedir = options.homedir || os.homedir;
+  var readdirSync = options.readdirSync || fs.readdirSync;
+  var pathModule = getPathModule(platform);
+  var home = homedir();
+
+  if (platform === 'win32') {
     return [
-      process.env.MCP_DESKTOP_AUTOMATION_NODE,
-      path.join(process.env.LOCALAPPDATA || '', 'nodejs', 'node.exe'),
-      path.join(process.env.ProgramFiles || '', 'nodejs', 'node.exe'),
-      path.join(process.env['ProgramFiles(x86)'] || '', 'nodejs', 'node.exe'),
-      path.join(process.env.APPDATA || '', 'nvm', 'node.exe'),
-    ];
+      env.MCP_DESKTOP_AUTOMATION_NODE,
+      pathModule.join(env.LOCALAPPDATA || '', 'nodejs', 'node.exe'),
+      pathModule.join(env.ProgramFiles || '', 'nodejs', 'node.exe'),
+      pathModule.join(env['ProgramFiles(x86)'] || '', 'nodejs', 'node.exe'),
+      pathModule.join(env.APPDATA || '', 'nvm', 'node.exe'),
+      pathModule.join(env.NVS_HOME || '', 'default', 'node.exe'),
+    ].concat(
+      expandVersionedNodePaths(
+        pathModule.join(home, '.asdf', 'installs', 'nodejs'),
+        ['bin', 'node.exe'],
+        readdirSync,
+        pathModule,
+      ),
+    );
   }
 
   return [
-    process.env.MCP_DESKTOP_AUTOMATION_NODE,
-    path.join(home, '.local', 'nodejs', 'node-v22.14.0-linux-x64', 'bin', 'node'),
-    path.join(home, '.local', 'nodejs', 'node-v20.18.0-linux-x64', 'bin', 'node'),
-    path.join(home, '.nvm', 'versions', 'node', 'current', 'bin', 'node'),
+    env.MCP_DESKTOP_AUTOMATION_NODE,
     '/usr/local/bin/node',
     '/usr/bin/node',
     '/opt/homebrew/bin/node',
-  ];
+  ]
+    .concat(expandVersionedNodePaths(pathModule.join(home, '.local', 'nodejs'), ['bin', 'node'], readdirSync, pathModule))
+    .concat(
+      expandVersionedNodePaths(pathModule.join(home, '.nvm', 'versions', 'node'), ['bin', 'node'], readdirSync, pathModule),
+    )
+    .concat(
+      expandVersionedNodePaths(pathModule.join(home, '.asdf', 'installs', 'nodejs'), ['bin', 'node'], readdirSync, pathModule),
+    );
 }
 
-function findCompatibleNode() {
+function findCompatibleNode(options) {
+  var env = (options && options.env) || process.env;
+  var platform = (options && options.platform) || process.platform;
+  var execPath = (options && options.execPath) || process.execPath;
+  var existsSync = (options && options.existsSync) || fs.existsSync;
+  var execFileSync = (options && options.execFileSync) || childProcess.execFileSync;
   var candidates = [];
   var seen = Object.create(null);
 
-  addCandidate(candidates, seen, process.env.MCP_DESKTOP_AUTOMATION_NODE);
-  addCandidate(candidates, seen, process.execPath);
-  getPathCandidates().forEach(function (candidate) {
+  function compatible(pathToNode) {
+    return isCompatibleNode(pathToNode, existsSync, execFileSync);
+  }
+
+  addCandidate(candidates, seen, env.MCP_DESKTOP_AUTOMATION_NODE);
+  addCandidate(candidates, seen, execPath);
+  getPathCandidates(env, platform).forEach(function (candidate) {
     addCandidate(candidates, seen, candidate);
   });
-  getWellKnownCandidates().forEach(function (candidate) {
+  getWellKnownCandidates(options || {}).forEach(function (candidate) {
     addCandidate(candidates, seen, candidate);
   });
 
   for (var index = 0; index < candidates.length; index += 1) {
-    if (isCompatibleNode(candidates[index])) {
+    if (compatible(candidates[index])) {
       return candidates[index];
     }
   }
@@ -139,4 +188,13 @@ function main() {
   });
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  findCompatibleNode,
+  getPathCandidates,
+  getWellKnownCandidates,
+  parseMajor,
+};

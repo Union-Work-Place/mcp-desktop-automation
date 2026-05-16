@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "desktopAutomation": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/launch.js"
+      ]
+    }
+  }
+}

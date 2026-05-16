@@ -35,6 +35,22 @@ function createScreenTools(dependencies) {
   }
 
   return {
+    async getDesktopCapabilities() {
+      try {
+        assertToolAllowed('get_desktop_capabilities', config);
+        return okResponse({ result: platform.getDesktopCapabilities(config) });
+      } catch (error) {
+        const automationError = toAutomationError(
+          error,
+          ErrorCodes.AUTOMATION_UNAVAILABLE,
+          'Failed to get desktop capabilities.',
+        );
+
+        logger.error('Error getting desktop capabilities:', automationError);
+        return errorResponse(automationError.code, automationError.message, automationError.details);
+      }
+    },
+
     async getScreenSize() {
       try {
         assertToolAllowed('get_screen_size', config);

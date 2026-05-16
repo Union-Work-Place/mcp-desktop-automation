@@ -4,6 +4,15 @@
   "description": "Model Context Protocol server for desktop automation",
   "main": "server.js",
   "bin": "./launch.js",
+  "files": [
+    "LICENSE",
+    "README.md",
+    "launch.js",
+    "launch.sh",
+    "launch.cmd",
+    "server.js",
+    "src/**/*"
+  ],
   "engines": {
     "node": ">=18"
   },

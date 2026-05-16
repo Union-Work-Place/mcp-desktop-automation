@@ -11,11 +11,15 @@ test('stdio MCP server exposes tools and returns screen size', async () => {
     const toolNames = tools.tools.map((tool) => tool.name);
 
     assert.deepEqual(toolNames.sort(), [
+      'get_desktop_capabilities',
+      'get_mouse_position',
       'get_screen_size',
       'keyboard_press',
       'keyboard_type',
       'mouse_click',
+      'mouse_drag',
       'mouse_move',
+      'mouse_scroll',
       'screen_capture',
     ]);
 
@@ -27,6 +31,22 @@ test('stdio MCP server exposes tools and returns screen size', async () => {
     assert.equal(typeof payload.result.height, 'number');
     assert.ok(payload.result.width > 0);
     assert.ok(payload.result.height > 0);
+  } finally {
+    await transport.close();
+  }
+});
+
+test('desktop capabilities tool reports platform metadata', async () => {
+  const { client, transport } = await createConnectedClient();
+
+  try {
+    const result = await client.callTool({ name: 'get_desktop_capabilities', arguments: {} });
+    const payload = JSON.parse(result.content[0].text);
+
+    assert.equal(payload.success, true);
+    assert.equal(typeof payload.result.platform, 'string');
+    assert.equal(typeof payload.result.mouse.supportsScroll, 'boolean');
+    assert.equal(typeof payload.result.keyboard.primaryModifier, 'string');
   } finally {
     await transport.close();
   }
