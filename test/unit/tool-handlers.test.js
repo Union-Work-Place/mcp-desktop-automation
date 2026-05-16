@@ -108,6 +108,68 @@ test('screen_capture returns metadata and resource link when inline image is dis
   assert.equal(payload.inlineImageIncluded, false);
 });
 
+test('screen tools expose status and wait_for_screen_change behaviors', async () => {
+  const captures = [Buffer.from('same'), Buffer.from('same'), Buffer.from('changed')];
+  const stored = [];
+  const tools = createScreenTools({
+    config: {
+      screenCaptureTimeoutMs: 100,
+      screenCaptureInlineByDefault: false,
+      screenCaptureMaxInlineBytes: 1024,
+      waitForScreenChangeTimeoutMs: 50,
+      waitForScreenChangePollIntervalMs: 1,
+    },
+    logger: { error() {} },
+    platform: {
+      getScreenCaptureAvailability() {
+        return { available: true };
+      },
+      getDesktopCapabilities() {
+        return { platform: 'linux', inputEnabled: true };
+      },
+    },
+    robotAdapter: {
+      getScreenSize() {
+        return { width: 10, height: 10 };
+      },
+    },
+    screenshotAdapter: {
+      async capture() {
+        return captures.shift();
+      },
+    },
+    screenshotStore: {
+      save(data, metadata) {
+        const record = {
+          id: 'stored-' + String(stored.length + 1),
+          data,
+          mimeType: metadata.mimeType,
+          createdAt: 'now',
+          expiresAt: 'later',
+          byteSize: 7,
+          width: metadata.width,
+          height: metadata.height,
+          displayId: metadata.displayId,
+        };
+        stored.push(record);
+        return record;
+      },
+      stats() {
+        return { count: stored.length };
+      },
+    },
+    async notifyResourcesChanged() {},
+  });
+
+  const statusResponse = await tools.getServerStatus();
+  const waitResponse = await tools.waitForScreenChange({ pollIntervalMs: 1, timeoutMs: 50 });
+
+  assert.equal(getPayload(statusResponse).success, true);
+  assert.equal(getPayload(statusResponse).result.platform.platform, 'linux');
+  assert.equal(waitResponse.isError, false);
+  assert.equal(getPayload(waitResponse).screenshotId, 'stored-1');
+});
+
 test('screen_capture returns DISPLAY_UNAVAILABLE in headless Linux mode', async () => {
   const tools = createScreenTools({
     config: { screenCaptureTimeoutMs: 100 },

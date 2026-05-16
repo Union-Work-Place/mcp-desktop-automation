@@ -283,8 +283,8 @@ Work:
 - Add resources for capabilities, recent screenshots, and diagnostics.
 - Consider an MCP Apps UI for viewing the latest screenshot and selecting coordinates, if the client supports it.
 - Add the `wait_for_screen_change` tool with a timeout and lightweight image diff.
-- Add OCR as an optional feature flag if a confirmed scenario occurs.
-- Add image crop region capture to reduce payload.
+- Defer OCR until a confirmed scenario and an image-processing backend are added.
+- Defer image crop region capture until an image-processing backend is introduced.
 
 Definition of Done:
 
@@ -335,7 +335,7 @@ Definition of Done:
 3. [x] After that, Phases 3 and 4, because security and screenshots pose the highest risk.
 4. [x] Then Phases 5 and 6 for cross-platform and Win11.
 5. [x] Next, Phases 7 and 8: dependencies and full test coverage.
-6. [ ] Then Phases 9-11: diagnostics, feature expansion, and documentation.
+6. [x] Then Phases 9-11: diagnostics, feature expansion, and documentation.
 7. [ ] Finally, Phase 12 for release readiness.
 
 ## First Specific Tasks for the Next Phase

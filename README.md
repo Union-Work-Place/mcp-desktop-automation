@@ -1,107 +1,111 @@
 # MCP Desktop Automation
 
-A Model Context Protocol server that provides desktop automation capabilities using RobotJS and screenshot capabilities. This server enables LLMs to control mouse movements, keyboard inputs, and capture screenshots of the desktop environment.
+MCP server for desktop automation over stdio. It exposes screen inspection, mouse, keyboard and diagnostics tools for VS Code, Claude Desktop and other MCP clients.
 
-## Configuration to use Desktop Automation Server
+## What It Does
 
-Here's how to configure Claude Desktop to use the MCP Desktop Automation server:
-
-### NPX
-
-```json
-{
-  "mcpServers": {
-    "desktop-automation": {
-      "command": "npx",
-      "args": ["-y", "mcp-desktop-automation"]
-    }
-  }
-}
-```
-
-### Permissions
-
-This server requires system-level permissions to:
-
-* Capture screenshots of your screen
-* Control mouse movement and clicks
-* Simulate keyboard input
-
-When first running Claude Desktop with this server, you may need to grant these permissions in your operating system's security settings.
-
-## Limitations
-
-While this server works with various MCP clients, it has been primarily tested with Claude Desktop.
-
-**Important**: The current implementation has a 1MB response size limit. For screen captures, this means:
-* High-resolution screenshots may exceed this limit and fail
-* Testing has shown 800x600 resolution works reliably
-* Consider reducing screen resolution or capturing specific screen areas if you encounter issues
+- Captures the screen and stores screenshots as MCP resources with TTL and byte limits.
+- Reports desktop capabilities, server status and current screen size.
+- Performs mouse movement, drag, scroll and click operations.
+- Types text and sends normalized key combinations with platform-aware modifier aliases.
+- Exposes prompts and diagnostics resources for safer guided usage.
 
 ## Requirements
 
-- Node.js runtime compatible with @modelcontextprotocol/sdk (>=18.x)
+- Node.js 18+.
+- Desktop permissions for screen capture and synthetic input.
+- A graphical session for screenshots on Linux (`DISPLAY` or `WAYLAND_DISPLAY`).
 
-## Launch Notes
+## Quick Start
 
-- The package entrypoint uses a cross-platform launcher.
-- On Linux, macOS, and Windows it will try to find a compatible Node.js runtime automatically.
-- If your MCP client starts the server with an older Node.js, set `MCP_DESKTOP_AUTOMATION_NODE` to a Node.js >=18 executable path.
-- On headless Linux, `screen_capture` requires `DISPLAY` or `WAYLAND_DISPLAY`; otherwise the server returns an MCP error instead of terminating.
+### Run From This Repository
 
-## Components
+```bash
+npm install
+npm start
+```
 
-### Tools
+The entrypoint is [launch.js](launch.js). It tries to locate a compatible Node.js runtime automatically on Linux, macOS and Windows.
 
-- **get_screen_size**
-  - Gets the screen dimensions
-  - No input parameters required
+If your MCP client launches the server with an older Node.js, set `MCP_DESKTOP_AUTOMATION_NODE` to a Node.js 18+ executable.
 
-- **screen_capture**
-  - Captures the current screen content
-  - No input parameters required
+### VS Code Workspace MCP
 
-- **keyboard_press**
-  - Presses a keyboard key or key combination
-  - Inputs:
-    - `key` (string, required): Key to press (e.g., 'enter', 'a', 'control')
-    - `modifiers` (array of strings, optional): Modifier keys to hold while pressing the key. Possible values: "control", "shift", "alt", "command"
+Use [.vscode/mcp.json](.vscode/mcp.json) or the example in [docs/configs/vscode-workspace.mcp.json](docs/configs/vscode-workspace.mcp.json).
 
-- **keyboard_type**
-  - Types text at the current cursor position
-  - Input: `text` (string, required): Text to type
+### Claude Desktop
 
-- **mouse_click**
-  - Performs a mouse click
-  - Inputs:
-    - `button` (string, optional, default: "left"): Mouse button to click. Possible values: "left", "right", "middle"
-    - `double` (boolean, optional, default: false): Whether to perform a double click
+Use the example in [docs/configs/claude-desktop.json](docs/configs/claude-desktop.json).
 
-- **mouse_move**
-  - Moves the mouse to specified coordinates
-  - Inputs:
-    - `x` (number, required): X coordinate
-    - `y` (number, required): Y coordinate
+## Tools
 
-### Resources
+- `get_desktop_capabilities`: reports platform, display mode, keyboard compatibility and enabled policy flags.
+- `get_server_status`: reports Node version, platform diagnostics and screenshot store status.
+- `get_screen_size`: returns the current screen size.
+- `screen_capture`: captures the current screen and returns metadata plus an optional inline image.
+- `wait_for_screen_change`: polls the screen until content changes and then captures the updated image.
+- `get_mouse_position`: returns the current mouse position.
+- `mouse_move`: moves the mouse to specific coordinates.
+- `mouse_drag`: drags the mouse to specific coordinates.
+- `mouse_scroll`: scrolls the mouse wheel by delta values.
+- `mouse_click`: performs a click or double click.
+- `keyboard_type`: types text at the current cursor position.
+- `keyboard_press`: presses a normalized key with optional normalized modifiers.
 
-The server provides access to screenshots:
+## Resources
 
-1. **Screenshot List** (`screenshot://list`)
-   - Lists all available screenshots by name
+- `screenshot://list`: JSON metadata for stored screenshots.
+- `screenshot://recent`: JSON metadata for the latest stored screenshot.
+- `screenshot://{id}`: binary screenshot content.
+- `diagnostics://status`: JSON server and screenshot store status.
+- `diagnostics://capabilities`: JSON desktop capability report.
 
-2. **Screenshot Content** (`screenshot://{id}`)
-   - PNG images of captured screenshots
-   - Accessible via the screenshot ID (timestamp-based naming)
+## Prompts
 
-## Key Features
+- `inspect-screen`: guided inspection flow for current desktop state.
+- `click-by-coordinates`: guided mouse move + click flow.
+- `type-text-safely`: guided text-entry flow with policy checks.
 
-- Desktop mouse control
-- Keyboard input simulation
-- Screen size detection
-- Screenshot capabilities
-- Simple JSON response format
+## Safety And Policy
+
+The server supports configuration-driven safety controls:
+
+- `MCP_DESKTOP_AUTOMATION_ENABLE_INPUT=false` disables keyboard and mouse tools.
+- `MCP_DESKTOP_AUTOMATION_READ_ONLY=true` leaves read-only tools enabled.
+- `MCP_DESKTOP_AUTOMATION_DRY_RUN=true` returns success without performing input.
+- `MCP_DESKTOP_AUTOMATION_ALLOWED_TOOLS` and `MCP_DESKTOP_AUTOMATION_BLOCKED_TOOLS` provide allow/deny lists.
+- `MCP_DESKTOP_AUTOMATION_SAFE_AREA=x,y,width,height` limits mouse movement and clickable area.
+- `MCP_DESKTOP_AUTOMATION_SCREENSHOT_*` options control timeouts, TTL and byte limits.
+
+See [docs/security.md](docs/security.md) for the full model.
+
+## Platform Notes
+
+- Linux: screenshots require `DISPLAY` or `WAYLAND_DISPLAY`. Headless environments return a controlled MCP error instead of crashing.
+- Windows 11: use Node 18+ and grant desktop/input permissions as required by your environment.
+- macOS: accessibility and screen-recording permissions may be required.
+
+Platform-specific setup is documented in [docs/linux.md](docs/linux.md) and [docs/windows.md](docs/windows.md).
+
+## Development
+
+- `npm run lint`
+- `npm test`
+- `npm run test:coverage`
+
+Additional references:
+
+- [docs/architecture.md](docs/architecture.md)
+- [docs/testing.md](docs/testing.md)
+- [docs/troubleshooting.md](docs/troubleshooting.md)
+- [docs/release-checklist.md](docs/release-checklist.md)
+
+## Known Limits
+
+- Screenshot cropping and OCR are not implemented yet; they remain future extensions that require an image-processing backend.
+- `robotjs` is native and can be sensitive to Node ABI and platform packaging.
+- Windows CI is configured at the workflow level, but local verification still depends on native build prerequisites on the target machine.
 
 ## License
 
-This MCP server is licensed under the MIT License. This means you are free to use, modify, and distribute the software, subject to the terms and conditions of the MIT License. For more details, please see the LICENSE file in the project repository.
+MIT. See [LICENSE](LICENSE).

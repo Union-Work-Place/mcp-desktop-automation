@@ -103,9 +103,28 @@ function createScreenshotStore(options = {}) {
       purgeExpired();
       return screenshots.get(id) || null;
     },
+    recent() {
+      purgeExpired();
+      const records = Array.from(screenshots.values());
+      if (records.length === 0) {
+        return null;
+      }
+
+      return toMetadata(records[records.length - 1]);
+    },
     list() {
       purgeExpired();
       return Array.from(screenshots.values(), toMetadata).reverse();
+    },
+    stats() {
+      purgeExpired();
+      return {
+        count: screenshots.size,
+        totalBytes,
+        maxItems,
+        maxBytes,
+        ttlMs,
+      };
     },
   };
 }

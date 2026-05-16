@@ -39,6 +39,10 @@ function createServer(dependencies) {
     async () => screenTools.getDesktopCapabilities(),
   );
 
+  server.tool('get_server_status', 'Reports server diagnostics and screenshot store status', {}, async () =>
+    screenTools.getServerStatus(),
+  );
+
   server.tool('get_screen_size', 'Gets the screen dimensions', {}, async () => screenTools.getScreenSize());
 
   server.tool(
@@ -50,6 +54,19 @@ function createServer(dependencies) {
       displayId: z.union([z.string(), z.number()]).optional().describe('Optional display identifier'),
     },
     async (params) => screenTools.screenCapture(params),
+  );
+
+  server.tool(
+    'wait_for_screen_change',
+    'Waits until the screen content changes and captures the updated screen',
+    {
+      includeImage: z.boolean().optional().describe('Whether to embed the changed image inline in the response'),
+      format: z.enum(['png', 'jpg', 'jpeg']).default('png').describe('Requested image format'),
+      displayId: z.union([z.string(), z.number()]).optional().describe('Optional display identifier'),
+      timeoutMs: z.number().positive().optional().describe('Maximum wait time in milliseconds'),
+      pollIntervalMs: z.number().positive().optional().describe('Polling interval in milliseconds'),
+    },
+    async (params) => screenTools.waitForScreenChange(params),
   );
 
   server.tool(
@@ -131,6 +148,40 @@ function createServer(dependencies) {
     };
   });
 
+  server.resource('screenshot-recent', 'screenshot://recent', async () => ({
+    contents: [
+      {
+        uri: 'screenshot://recent',
+        mimeType: 'application/json',
+        text: JSON.stringify({ screenshot: dependencies.screenshotStore.recent() }),
+      },
+    ],
+  }));
+
+  server.resource('diagnostics-status', 'diagnostics://status', async () => ({
+    contents: [
+      {
+        uri: 'diagnostics://status',
+        mimeType: 'application/json',
+        text: JSON.stringify({
+          nodeVersion: process.versions.node,
+          screenshotStore: dependencies.screenshotStore.stats(),
+          platform: dependencies.platform.getDesktopCapabilities(dependencies.config),
+        }),
+      },
+    ],
+  }));
+
+  server.resource('diagnostics-capabilities', 'diagnostics://capabilities', async () => ({
+    contents: [
+      {
+        uri: 'diagnostics://capabilities',
+        mimeType: 'application/json',
+        text: JSON.stringify(dependencies.platform.getDesktopCapabilities(dependencies.config)),
+      },
+    ],
+  }));
+
   server.resource(
     'screenshot-content',
     new ResourceTemplate('screenshot://{id}', { list: undefined }),
@@ -150,6 +201,79 @@ function createServer(dependencies) {
         ],
       };
     },
+  );
+
+  server.registerPrompt(
+    'inspect-screen',
+    {
+      title: 'Inspect Screen',
+      description: 'Guide the assistant to inspect the current desktop state safely.',
+      argsSchema: {
+        goal: z.string().optional().describe('Optional goal for the screen inspection'),
+      },
+    },
+    async ({ goal }) => ({
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text:
+              `Inspect the current desktop state${goal ? ` for: ${goal}` : ''}. ` +
+              'Start with get_desktop_capabilities, then get_screen_size, then use screen_capture with includeImage=false unless inline pixels are necessary.',
+          },
+        },
+      ],
+    }),
+  );
+
+  server.registerPrompt(
+    'click-by-coordinates',
+    {
+      title: 'Click By Coordinates',
+      description: 'Guide the assistant to move and click safely at explicit coordinates.',
+      argsSchema: {
+        x: z.number().describe('Target X coordinate'),
+        y: z.number().describe('Target Y coordinate'),
+      },
+    },
+    async ({ x, y }) => ({
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text:
+              `Move the mouse to (${x}, ${y}) and click safely. ` +
+              'Before clicking, check get_desktop_capabilities and get_screen_size, then call mouse_move followed by mouse_click.',
+          },
+        },
+      ],
+    }),
+  );
+
+  server.registerPrompt(
+    'type-text-safely',
+    {
+      title: 'Type Text Safely',
+      description: 'Guide the assistant to type text only after verifying input is permitted.',
+      argsSchema: {
+        text: z.string().describe('Text to type'),
+      },
+    },
+    async ({ text }) => ({
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text:
+              `Type the following text safely: ${text}. ` +
+              'First check get_desktop_capabilities or get_server_status to verify input is enabled and not running in dry-run or read-only mode.',
+          },
+        },
+      ],
+    }),
   );
 
   return server;
