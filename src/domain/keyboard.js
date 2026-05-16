@@ -28,6 +28,7 @@ const MODIFIER_ALIASES = {
 };
 
 const SUPPORTED_NAMED_KEYS = new Set([
+  'alt',
   'backspace',
   'command',
   'control',
@@ -39,7 +40,6 @@ const SUPPORTED_NAMED_KEYS = new Set([
   'home',
   'insert',
   'left',
-  'alt',
   'pagedown',
   'pageup',
   'right',
