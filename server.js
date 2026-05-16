@@ -14,6 +14,14 @@ const { createServer } = require('./src/server/createServer');
 async function main() {
   const config = createConfig(process.env);
   const platform = createPlatformAdapter({ env: process.env, platform: process.platform });
+  const runtimeEnvironment = platform.getRuntimeEnvironment();
+
+  Object.entries(runtimeEnvironment).forEach(([key, value]) => {
+    if (!process.env[key] && value) {
+      process.env[key] = value;
+    }
+  });
+
   const logger = createLogger();
   const server = createServer({
     version: packageJson.version,
@@ -28,6 +36,7 @@ async function main() {
   logger.info('startup_diagnostics', {
     nodeVersion: process.versions.node,
     platform: platform.getDesktopCapabilities(config),
+    runtimeEnvironment,
     config: {
       enableInput: config.enableInput,
       readOnly: config.readOnly,

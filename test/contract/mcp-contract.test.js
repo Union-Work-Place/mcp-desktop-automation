@@ -79,6 +79,7 @@ test('screen_capture returns MCP error without closing connection on headless Li
     env: {
       DISPLAY: '',
       WAYLAND_DISPLAY: '',
+      MCP_DESKTOP_AUTOMATION_AUTO_DETECT_DISPLAY: 'false',
     },
   });
 

@@ -9,6 +9,9 @@
 ## Screen Capture Fails On Linux
 
 - Confirm `DISPLAY` or `WAYLAND_DISPLAY` is set.
+- If the Linux session is graphical but those variables are empty, check whether `/tmp/.X11-unix/X0` or another X11 socket exists. The server auto-detects that path by default.
+- Use `MCP_DESKTOP_AUTOMATION_DISPLAY=:0` when you need to force a specific X11 display.
+- Use `MCP_DESKTOP_AUTOMATION_AUTO_DETECT_DISPLAY=false` when you want to keep strict headless behavior for tests.
 - If you are in CI or a headless session, use Xvfb when appropriate.
 - Inspect `get_desktop_capabilities` to confirm what the server sees.
 
