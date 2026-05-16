@@ -3,31 +3,10 @@
 'use strict';
 
 var childProcess = require('child_process');
-var fs = require('fs');
 var path = require('path');
 
 var PROJECT_ROOT = path.resolve(__dirname, '..');
-
-function resolveNpmCli() {
-  var execDir = path.dirname(process.execPath);
-  var candidates = process.platform === 'win32'
-    ? [
-        path.resolve(execDir, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
-        path.resolve(execDir, '..', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
-      ]
-    : [
-        path.resolve(execDir, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
-        path.resolve(execDir, '..', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
-      ];
-
-  for (var index = 0; index < candidates.length; index += 1) {
-    if (fs.existsSync(candidates[index])) {
-      return candidates[index];
-    }
-  }
-
-  throw new Error('Unable to locate npm-cli.js for package validation.');
-}
+var npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 function validate(files) {
   var names = files.map(function (file) {
@@ -56,10 +35,9 @@ function validate(files) {
 }
 
 function main() {
-  var npmCli = resolveNpmCli();
   var output = childProcess.execFileSync(
-    process.execPath,
-    [npmCli, 'pack', '--json', '--dry-run'],
+    npmCommand,
+    ['pack', '--json', '--dry-run'],
     { cwd: PROJECT_ROOT, encoding: 'utf8' },
   );
   var packResult = JSON.parse(output)[0];
