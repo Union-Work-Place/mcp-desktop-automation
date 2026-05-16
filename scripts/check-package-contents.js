@@ -8,12 +8,12 @@ var path = require('path');
 var PROJECT_ROOT = path.resolve(__dirname, '..');
 
 function getWindowsShell(env) {
-  if (env && (env.ComSpec || env.comspec)) {
-    return env.ComSpec || env.comspec;
+  if (env && env.ComSpec) {
+    return env.ComSpec;
   }
 
-  if (env && (env.SystemRoot || env.windir)) {
-    return path.win32.join(env.SystemRoot || env.windir, 'System32', 'cmd.exe');
+  if (env && env.SystemRoot) {
+    return path.win32.join(env.SystemRoot, 'System32', 'cmd.exe');
   }
 
   return 'C:\\Windows\\System32\\cmd.exe';
@@ -77,8 +77,8 @@ if (require.main === module) {
 }
 
 module.exports = {
-  getPackCommand: getPackCommand,
-  getWindowsShell: getWindowsShell,
-  main: main,
-  validate: validate,
+  getPackCommand,
+  getWindowsShell,
+  main,
+  validate,
 };
