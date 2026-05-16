@@ -1,14 +1,28 @@
 const { ErrorCodes, toAutomationError } = require('../domain/errors');
+const { normalizeKey, normalizeModifiers } = require('../domain/keyboard');
 const { assertCoordinatesInBounds, assertPointInSafeArea, assertToolAllowed } = require('../domain/policy');
 const { errorResponse, okResponse } = require('../server/mcpResponses');
 
 function createMouseTools(dependencies) {
   const config = dependencies.config || {};
   const logger = dependencies.logger || console;
+  const platform = dependencies.platform;
   const robotAdapter = dependencies.robotAdapter;
+  const currentPlatform = platform && platform.getDesktopCapabilities
+    ? platform.getDesktopCapabilities(config).platform
+    : process.platform;
 
   function getCurrentMousePosition() {
     return typeof robotAdapter.getMousePosition === 'function' ? robotAdapter.getMousePosition() : null;
+  }
+
+  function getNormalizedKeySettings(params) {
+    const settings = Object.assign({ modifiers: [] }, params || {});
+
+    return {
+      key: normalizeKey(settings.key, currentPlatform),
+      modifiers: normalizeModifiers(settings.modifiers, currentPlatform),
+    };
   }
 
   return {
@@ -76,6 +90,52 @@ function createMouseTools(dependencies) {
         );
 
         logger.error('Error dragging mouse:', automationError);
+        return errorResponse(automationError.code, automationError.message, automationError.details);
+      }
+    },
+
+    async mouseDragWithKeyPress(params) {
+      let heldKey = null;
+
+      try {
+        assertToolAllowed('mouse_drag_with_key_press', config, { requiresInput: true });
+
+        const screenSize = robotAdapter.getScreenSize();
+        assertCoordinatesInBounds(params, screenSize);
+        assertPointInSafeArea(params, config.safeArea);
+
+        const normalizedSettings = getNormalizedKeySettings(params);
+
+        if (config.dryRun) {
+          return okResponse({
+            dryRun: true,
+            key: normalizedSettings.key,
+            modifiers: normalizedSettings.modifiers,
+          });
+        }
+
+        heldKey = normalizedSettings;
+        robotAdapter.toggleKey(heldKey.key, 'down', heldKey.modifiers);
+        robotAdapter.dragMouse(params.x, params.y);
+        robotAdapter.toggleKey(heldKey.key, 'up', heldKey.modifiers);
+        heldKey = null;
+        return okResponse();
+      } catch (error) {
+        if (heldKey) {
+          try {
+            robotAdapter.toggleKey(heldKey.key, 'up', heldKey.modifiers);
+          } catch {
+            // Best-effort cleanup to avoid leaving the key held down.
+          }
+        }
+
+        const automationError = toAutomationError(
+          error,
+          ErrorCodes.AUTOMATION_UNAVAILABLE,
+          'Failed to drag the mouse while holding a key.',
+        );
+
+        logger.error('Error dragging mouse while holding a key:', automationError);
         return errorResponse(automationError.code, automationError.message, automationError.details);
       }
     },

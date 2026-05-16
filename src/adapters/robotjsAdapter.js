@@ -38,6 +38,14 @@ function createRobotjsAdapter(implementation) {
 
       robotApi.keyTap(key, modifiers);
     },
+    toggleKey(key, action, modifiers) {
+      if (!modifiers || modifiers.length === 0) {
+        robotApi.keyToggle(key, action);
+        return;
+      }
+
+      robotApi.keyToggle(key, action, modifiers);
+    },
   };
 }
 
