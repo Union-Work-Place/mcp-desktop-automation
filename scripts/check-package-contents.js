@@ -3,9 +3,34 @@
 'use strict';
 
 var childProcess = require('child_process');
+var fs = require('fs');
 var path = require('path');
 
 var PROJECT_ROOT = path.resolve(__dirname, '..');
+
+function resolveNpmCli(platform, nodePath, existsSync) {
+  var currentNodePath = nodePath || process.execPath;
+  var fileExists = existsSync || fs.existsSync;
+  var pathModule = platform === 'win32' ? path.win32 : path.posix;
+  var execDir = pathModule.dirname(currentNodePath);
+  var candidates = platform === 'win32'
+    ? [
+        pathModule.resolve(execDir, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+        pathModule.resolve(execDir, '..', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+      ]
+    : [
+        pathModule.resolve(execDir, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+        pathModule.resolve(execDir, '..', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+      ];
+
+  for (var index = 0; index < candidates.length; index += 1) {
+    if (fileExists(candidates[index])) {
+      return candidates[index];
+    }
+  }
+
+  return null;
+}
 
 function getWindowsShell(env) {
   if (env && env.ComSpec) {
@@ -19,7 +44,18 @@ function getWindowsShell(env) {
   return 'C:\\Windows\\System32\\cmd.exe';
 }
 
-function getPackCommand(platform, env) {
+function getPackCommand(platform, env, options) {
+  var runtimeOptions = options || {};
+  var nodePath = runtimeOptions.nodePath || process.execPath;
+  var npmCli = resolveNpmCli(platform, nodePath, runtimeOptions.existsSync);
+
+  if (npmCli) {
+    return {
+      command: nodePath,
+      args: [npmCli, 'pack', '--json', '--dry-run'],
+    };
+  }
+
   if (platform === 'win32') {
     return {
       command: getWindowsShell(env),
@@ -60,7 +96,7 @@ function validate(files) {
 }
 
 function main() {
-  var packCommand = getPackCommand(process.platform, process.env);
+  var packCommand = getPackCommand(process.platform, process.env, { nodePath: process.execPath });
   var output = childProcess.execFileSync(
     packCommand.command,
     packCommand.args,
@@ -80,5 +116,6 @@ module.exports = {
   getPackCommand,
   getWindowsShell,
   main,
+  resolveNpmCli,
   validate,
 };
