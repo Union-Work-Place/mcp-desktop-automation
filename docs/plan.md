@@ -336,12 +336,13 @@ Definition of Done:
 4. [x] Then Phases 5 and 6 for cross-platform and Win11.
 5. [x] Next, Phases 7 and 8: dependencies and full test coverage.
 6. [x] Then Phases 9-11: diagnostics, feature expansion, and documentation.
-7. [ ] Finally, Phase 12 for release readiness.
+7. [x] Finally, Phase 12 for release readiness.
 
 ## First Specific Tasks for the Next Phase
 
 - Add `engines`, real test scripts, and a basic test runner.
-- Write MCP contract smoke tests for `tools/list` and `get_screen_size`. - Move response helpers and screenshot store out of `server.js`.
+- Write MCP contract smoke tests for `tools/list` and `get_screen_size`. 
+- Move response helpers and screenshot store out of `server.js`.
 - Add a limited screenshot store with TTL and UUID ids.
 - Remove screenshot blobs logging.
 - Update Dockerfile to `launch.js`.

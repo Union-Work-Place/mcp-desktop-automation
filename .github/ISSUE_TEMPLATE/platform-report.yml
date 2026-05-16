@@ -1,0 +1,28 @@
+name: Platform compatibility report
+description: Report platform-specific install or runtime behavior
+title: "[Platform]: "
+labels:
+  - platform
+body:
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+    validations:
+      required: true
+  - type: textarea
+    id: install
+    attributes:
+      label: Install and startup result
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional notes

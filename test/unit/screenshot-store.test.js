@@ -55,3 +55,29 @@ test('screenshot store rejects entries larger than configured byte limit', () =>
     store.save('YWI=', { mimeType: 'image/png' });
   }, /configured storage byte limit/i);
 });
+
+test('screenshot store exposes recent item metadata and stats', () => {
+  const store = createScreenshotStore({
+    now: () => 1_700_000_000_000,
+    screenshotTtlMs: 10_000,
+    screenshotMaxItems: 3,
+    screenshotMaxBytes: 1024,
+  });
+
+  store.save('YQ==', { mimeType: 'image/png', displayId: 'A' });
+  const latest = store.save('Yg==', { mimeType: 'image/jpeg', format: 'jpg', displayId: 'B' });
+  const recent = store.recent();
+  const stats = store.stats();
+
+  assert.equal(recent.id, latest.id);
+  assert.equal(recent.mimeType, 'image/jpeg');
+  assert.equal(recent.format, 'jpg');
+  assert.equal(recent.displayId, 'B');
+  assert.deepEqual(stats, {
+    count: 2,
+    totalBytes: 2,
+    maxItems: 3,
+    maxBytes: 1024,
+    ttlMs: 10_000,
+  });
+});

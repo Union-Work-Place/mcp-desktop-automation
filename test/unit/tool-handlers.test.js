@@ -162,12 +162,81 @@ test('screen tools expose status and wait_for_screen_change behaviors', async ()
   });
 
   const statusResponse = await tools.getServerStatus();
-  const waitResponse = await tools.waitForScreenChange({ pollIntervalMs: 1, timeoutMs: 50 });
+  const waitResponse = await tools.waitForScreenChange({ pollIntervalMs: 5, timeoutMs: 250 });
 
   assert.equal(getPayload(statusResponse).success, true);
   assert.equal(getPayload(statusResponse).result.platform.platform, 'linux');
   assert.equal(waitResponse.isError, false);
   assert.equal(getPayload(waitResponse).screenshotId, 'stored-1');
+});
+
+test('screen tools handle jpeg capture options and wait timeout details', async () => {
+  let savedMetadata = null;
+  const tools = createScreenTools({
+    config: {
+      screenCaptureTimeoutMs: 100,
+      screenCaptureInlineByDefault: true,
+      screenCaptureMaxInlineBytes: 1024,
+      waitForScreenChangeTimeoutMs: 20,
+      waitForScreenChangePollIntervalMs: 1,
+    },
+    logger: { error() {} },
+    platform: {
+      getScreenCaptureAvailability() {
+        return { available: true };
+      },
+      getDesktopCapabilities() {
+        return { platform: 'linux', inputEnabled: true };
+      },
+    },
+    robotAdapter: {
+      getScreenSize() {
+        return { width: 8, height: 6 };
+      },
+    },
+    screenshotAdapter: {
+      async capture() {
+        return Buffer.from('jpeg-image');
+      },
+    },
+    screenshotStore: {
+      save(data, metadata) {
+        savedMetadata = metadata;
+        return {
+          id: 'jpeg-shot',
+          data,
+          mimeType: metadata.mimeType,
+          createdAt: 'now',
+          expiresAt: 'later',
+          byteSize: 10,
+          width: metadata.width,
+          height: metadata.height,
+          displayId: metadata.displayId,
+        };
+      },
+      stats() {
+        return { count: 1 };
+      },
+    },
+    async notifyResourcesChanged() {},
+  });
+
+  const captureResponse = await tools.screenCapture({ format: 'jpg', displayId: 'main' });
+  const waitResponse = await tools.waitForScreenChange({ timeoutMs: 20, pollIntervalMs: 1 });
+
+  assert.equal(captureResponse.isError, false);
+  assert.equal(captureResponse.content[1].type, 'image');
+  assert.deepEqual(savedMetadata, {
+    mimeType: 'image/jpeg',
+    width: 8,
+    height: 6,
+    format: 'jpg',
+    displayId: 'main',
+  });
+  assert.equal(waitResponse.isError, true);
+  assert.equal(getPayload(waitResponse).error.code, 'SCREENSHOT_FAILED');
+  assert.equal(getPayload(waitResponse).error.details.timeoutMs, 20);
+  assert.equal(getPayload(waitResponse).error.details.pollIntervalMs, 1);
 });
 
 test('screen_capture returns DISPLAY_UNAVAILABLE in headless Linux mode', async () => {
@@ -275,6 +344,77 @@ test('mouse tools enforce bounds, safe area, and dry-run policy', async () => {
   assert.equal(clickCount, 0);
   assert.equal(dragCount, 0);
   assert.equal(scrollCount, 0);
+});
+
+test('mouse tools execute operations and apply current-position safe-area checks', async () => {
+  const calls = [];
+  const mouseTools = createMouseTools({
+    config: { safeArea: { x: 10, y: 10, width: 40, height: 40 } },
+    logger: { error() {} },
+    robotAdapter: {
+      getScreenSize() {
+        return { width: 100, height: 100 };
+      },
+      getMousePosition() {
+        return { x: 20, y: 20 };
+      },
+      moveMouse(x, y) {
+        calls.push(['moveMouse', x, y]);
+      },
+      dragMouse(x, y) {
+        calls.push(['dragMouse', x, y]);
+      },
+      scrollMouse(x, y) {
+        calls.push(['scrollMouse', x, y]);
+      },
+      mouseClick(button, doubleClick) {
+        calls.push(['mouseClick', button, doubleClick]);
+      },
+    },
+  });
+
+  const moveResponse = await mouseTools.mouseMove({ x: 25, y: 25 });
+  const dragResponse = await mouseTools.mouseDrag({ x: 30, y: 30 });
+  const scrollResponse = await mouseTools.mouseScroll({ y: -2 });
+  const clickResponse = await mouseTools.mouseClick({ button: 'right', double: true });
+
+  assert.equal(moveResponse.isError, false);
+  assert.equal(dragResponse.isError, false);
+  assert.equal(scrollResponse.isError, false);
+  assert.equal(clickResponse.isError, false);
+  assert.deepEqual(calls, [
+    ['moveMouse', 25, 25],
+    ['dragMouse', 30, 30],
+    ['scrollMouse', 0, -2],
+    ['mouseClick', 'right', true],
+  ]);
+
+  const unsafeMouseTools = createMouseTools({
+    config: { safeArea: { x: 10, y: 10, width: 10, height: 10 } },
+    logger: { error() {} },
+    robotAdapter: {
+      getScreenSize() {
+        return { width: 100, height: 100 };
+      },
+      getMousePosition() {
+        return { x: 30, y: 30 };
+      },
+      scrollMouse() {
+        throw new Error('should not scroll');
+      },
+      mouseClick() {
+        throw new Error('should not click');
+      },
+    },
+  });
+
+  const unsafeScroll = await unsafeMouseTools.mouseScroll({ y: 1 });
+  const unsafeClick = await unsafeMouseTools.mouseClick({});
+
+  assert.equal(unsafeScroll.isError, true);
+  assert.equal(unsafeClick.isError, true);
+  assert.equal(getPayload(unsafeScroll).error.code, 'PERMISSION_DENIED');
+  assert.equal(getPayload(unsafeClick).error.code, 'PERMISSION_DENIED');
 });
 
 test('keyboard and mouse tools honor input policy flags', async () => {

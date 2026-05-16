@@ -115,12 +115,24 @@ test('diagnostics resources and prompts are exposed', async () => {
 
   try {
     const diagnostics = await client.readResource({ uri: 'diagnostics://status' });
+    const capabilities = await client.readResource({ uri: 'diagnostics://capabilities' });
+    const recentScreenshot = await client.readResource({ uri: 'screenshot://recent' });
     const prompts = await client.listPrompts();
     const prompt = await client.getPrompt({ name: 'inspect-screen', arguments: { goal: 'find focused window' } });
+    const promptWithoutGoal = await client.getPrompt({ name: 'inspect-screen', arguments: {} });
+    const clickPrompt = await client.getPrompt({ name: 'click-by-coordinates', arguments: { x: '10', y: '20' } });
+    const typePrompt = await client.getPrompt({ name: 'type-text-safely', arguments: { text: 'hello' } });
 
     assert.equal(typeof JSON.parse(diagnostics.contents[0].text).nodeVersion, 'string');
+    assert.equal(typeof JSON.parse(capabilities.contents[0].text).platform, 'string');
+    assert.ok('screenshot' in JSON.parse(recentScreenshot.contents[0].text));
     assert.ok(prompts.prompts.some((item) => item.name === 'inspect-screen'));
+    assert.ok(prompts.prompts.some((item) => item.name === 'click-by-coordinates'));
+    assert.ok(prompts.prompts.some((item) => item.name === 'type-text-safely'));
     assert.match(prompt.messages[0].content.text, /find focused window/i);
+    assert.doesNotMatch(promptWithoutGoal.messages[0].content.text, /for:/i);
+    assert.match(clickPrompt.messages[0].content.text, /\(10, 20\)/);
+    assert.match(typePrompt.messages[0].content.text, /hello/i);
   } finally {
     await transport.close();
   }

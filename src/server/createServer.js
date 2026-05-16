@@ -233,8 +233,8 @@ function createServer(dependencies) {
       title: 'Click By Coordinates',
       description: 'Guide the assistant to move and click safely at explicit coordinates.',
       argsSchema: {
-        x: z.number().describe('Target X coordinate'),
-        y: z.number().describe('Target Y coordinate'),
+        x: z.string().describe('Target X coordinate'),
+        y: z.string().describe('Target Y coordinate'),
       },
     },
     async ({ x, y }) => ({

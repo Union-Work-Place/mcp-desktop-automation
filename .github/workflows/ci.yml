@@ -10,7 +10,7 @@ jobs:
   test:
     strategy:
       matrix:
-        node-version: ['20.x', '22.x']
+        node-version: ['18.x', '20.x', '22.x']
 
     runs-on: ubuntu-latest
 
@@ -36,6 +36,30 @@ jobs:
       - name: Test
         run: xvfb-run -a npm test
 
+      - name: Package contents check
+        run: npm run test:package
+
+  windows-smoke:
+    strategy:
+      matrix:
+        node-version: ['18.x', '20.x', '22.x']
+
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies without native postinstall scripts
+        run: npm ci --ignore-scripts
+
+      - name: Windows launcher and config smoke tests
+        run: node --test test/unit/keyboard-and-launcher.test.js test/unit/mcp-config.test.js test/unit/logging.test.js
+
   coverage:
     runs-on: ubuntu-latest
 
@@ -57,6 +81,9 @@ jobs:
 
       - name: Coverage
         run: xvfb-run -a npm run test:coverage
+
+      - name: Package contents check
+        run: npm run test:package
 
       - name: Upload coverage artifacts
         uses: actions/upload-artifact@v4
