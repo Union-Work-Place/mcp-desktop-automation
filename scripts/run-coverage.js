@@ -54,7 +54,6 @@ var child = childProcess.spawn(
     process.execPath,
     '--test',
   ].concat(testFiles),
-  
   {
     cwd: PROJECT_ROOT,
     env: process.env,
