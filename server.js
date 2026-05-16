@@ -26,9 +26,28 @@ const server = new McpServer(
 
 const screenshots = {};
 
+function toMcpTextResponse(obj, isError = false) {
+  return {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify(obj),
+      },
+    ],
+    isError,
+  };
+}
+
 // Implementation of capabilities
 const capabilityImplementations = {
   screen_capture: async (params = {}) => {
+    if (process.platform === 'linux' && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) {
+      return toMcpTextResponse({
+        success: false,
+        error: 'Screen capture requires DISPLAY or WAYLAND_DISPLAY on Linux.',
+      }, true);
+    }
+
     try {
       // Take a screenshot
       const img = await screenshot();
@@ -55,7 +74,7 @@ const capabilityImplementations = {
       };
     } catch (error) {
       console.error('Error capturing screen:', error);
-      return { success: false, error: error.message };
+      return toMcpTextResponse({ success: false, error: error.message }, true);
     }
   },
 
@@ -128,14 +147,7 @@ const capabilityImplementations = {
 };
 
 function toMcpResponse(obj) {
-  return {
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify(obj),
-      },
-    ],
-  };
+  return toMcpTextResponse(obj);
 }
 
 server.tool("get_screen_size", "Gets the screen dimensions", {},

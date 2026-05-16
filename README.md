@@ -40,7 +40,14 @@ While this server works with various MCP clients, it has been primarily tested w
 
 ## Requirements
 
-- Node.js (>=14.x)
+- Node.js runtime compatible with @modelcontextprotocol/sdk (>=18.x)
+
+## Launch Notes
+
+- The package entrypoint uses a cross-platform launcher.
+- On Linux, macOS, and Windows it will try to find a compatible Node.js runtime automatically.
+- If your MCP client starts the server with an older Node.js, set `MCP_DESKTOP_AUTOMATION_NODE` to a Node.js >=18 executable path.
+- On headless Linux, `screen_capture` requires `DISPLAY` or `WAYLAND_DISPLAY`; otherwise the server returns an MCP error instead of terminating.
 
 ## Components
 

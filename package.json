@@ -3,9 +3,9 @@
   "version": "0.1.6",
   "description": "Model Context Protocol server for desktop automation",
   "main": "server.js",
-  "bin": "./server.js",
+  "bin": "./launch.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node ./launch.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
