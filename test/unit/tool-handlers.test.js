@@ -108,16 +108,13 @@ test('screen_capture returns metadata and resource link when inline image is dis
   assert.equal(payload.inlineImageIncluded, false);
 });
 
-test('screen tools expose status and wait_for_screen_change behaviors', async () => {
-  const captures = [Buffer.from('same'), Buffer.from('same'), Buffer.from('changed')];
+test('screen tools expose status and screenshot capture behaviors', async () => {
   const stored = [];
   const tools = createScreenTools({
     config: {
       screenCaptureTimeoutMs: 100,
       screenCaptureInlineByDefault: false,
       screenCaptureMaxInlineBytes: 1024,
-      waitForScreenChangeTimeoutMs: 50,
-      waitForScreenChangePollIntervalMs: 1,
     },
     logger: { error() {} },
     platform: {
@@ -135,7 +132,7 @@ test('screen tools expose status and wait_for_screen_change behaviors', async ()
     },
     screenshotAdapter: {
       async capture() {
-        return captures.shift();
+        return Buffer.from('captured-image');
       },
     },
     screenshotStore: {
@@ -162,23 +159,21 @@ test('screen tools expose status and wait_for_screen_change behaviors', async ()
   });
 
   const statusResponse = await tools.getServerStatus();
-  const waitResponse = await tools.waitForScreenChange({ pollIntervalMs: 5, timeoutMs: 250 });
+  const captureResponse = await tools.screenCapture({ includeImage: false });
 
   assert.equal(getPayload(statusResponse).success, true);
   assert.equal(getPayload(statusResponse).result.platform.platform, 'linux');
-  assert.equal(waitResponse.isError, false);
-  assert.equal(getPayload(waitResponse).screenshotId, 'stored-1');
+  assert.equal(captureResponse.isError, false);
+  assert.equal(getPayload(captureResponse).screenshotId, 'stored-1');
 });
 
-test('screen tools handle jpeg capture options and wait timeout details', async () => {
+test('screen tools handle jpeg capture options', async () => {
   let savedMetadata = null;
   const tools = createScreenTools({
     config: {
       screenCaptureTimeoutMs: 100,
       screenCaptureInlineByDefault: true,
       screenCaptureMaxInlineBytes: 1024,
-      waitForScreenChangeTimeoutMs: 20,
-      waitForScreenChangePollIntervalMs: 1,
     },
     logger: { error() {} },
     platform: {
@@ -222,7 +217,6 @@ test('screen tools handle jpeg capture options and wait timeout details', async 
   });
 
   const captureResponse = await tools.screenCapture({ format: 'jpg', displayId: 'main' });
-  const waitResponse = await tools.waitForScreenChange({ timeoutMs: 20, pollIntervalMs: 1 });
 
   assert.equal(captureResponse.isError, false);
   assert.equal(captureResponse.content[1].type, 'image');
@@ -233,10 +227,6 @@ test('screen tools handle jpeg capture options and wait timeout details', async 
     format: 'jpg',
     displayId: 'main',
   });
-  assert.equal(waitResponse.isError, true);
-  assert.equal(getPayload(waitResponse).error.code, 'SCREENSHOT_FAILED');
-  assert.equal(getPayload(waitResponse).error.details.timeoutMs, 20);
-  assert.equal(getPayload(waitResponse).error.details.pollIntervalMs, 1);
 });
 
 test('screen_capture returns DISPLAY_UNAVAILABLE in headless Linux mode', async () => {

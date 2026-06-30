@@ -24,7 +24,6 @@ test('stdio MCP server exposes tools and returns screen size', async () => {
       'mouse_move',
       'mouse_scroll',
       'screen_capture',
-      'wait_for_screen_change',
     ]);
 
     const result = await client.callTool({ name: 'get_screen_size', arguments: {} });

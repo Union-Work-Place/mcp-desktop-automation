@@ -13,12 +13,6 @@ function createScreenTools(dependencies) {
   const notifyResourcesChanged = dependencies.notifyResourcesChanged || (async () => {});
   const logger = dependencies.logger || console;
 
-  function wait(delayMs) {
-    return new Promise((resolve) => {
-      setTimeout(resolve, delayMs);
-    });
-  }
-
   function buildScreenshotPayload(screenshot, inlineImageIncluded) {
     return {
       screenshotId: screenshot.id,
@@ -182,53 +176,6 @@ function createScreenTools(dependencies) {
 
         logger.error('Error capturing screen:', automationError);
         return errorResponse(automationError.code, automationError.message);
-      }
-    },
-
-    async waitForScreenChange(params) {
-      const settings = buildCaptureOptions(params);
-      const timeoutMs = params && params.timeoutMs ? params.timeoutMs : config.waitForScreenChangeTimeoutMs;
-      const pollIntervalMs = params && params.pollIntervalMs ? params.pollIntervalMs : config.waitForScreenChangePollIntervalMs;
-
-      try {
-        assertToolAllowed('wait_for_screen_change', config);
-      } catch (error) {
-        return errorResponse(error.code, error.message, error.details);
-      }
-
-      const availability = platform.getScreenCaptureAvailability();
-      if (!availability.available) {
-        return errorResponse(availability.code, availability.message);
-      }
-
-      try {
-        const baseline = await captureWithTimeout(settings);
-        const deadline = Date.now() + timeoutMs;
-
-        while (Date.now() < deadline) {
-          await wait(pollIntervalMs);
-          const nextImage = await captureWithTimeout(settings);
-
-          if (!baseline.equals(nextImage)) {
-            const screenshot = await storeScreenshot(nextImage, settings);
-
-            return toCaptureResponse(screenshot, settings, `Screen changed and screenshot ${screenshot.id} was captured.`);
-          }
-        }
-
-        return errorResponse(ErrorCodes.SCREENSHOT_FAILED, 'Timed out waiting for screen change.', {
-          timeoutMs,
-          pollIntervalMs,
-        });
-      } catch (error) {
-        const automationError = toAutomationError(
-          error,
-          ErrorCodes.SCREENSHOT_FAILED,
-          'Failed while waiting for screen change.',
-        );
-
-        logger.error('Error waiting for screen change:', automationError);
-        return errorResponse(automationError.code, automationError.message, automationError.details);
       }
     },
   };

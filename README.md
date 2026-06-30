@@ -43,7 +43,6 @@ Use the example in [docs/configs/claude-desktop.json](docs/configs/claude-deskto
 - `get_server_status`: reports Node version, platform diagnostics and screenshot store status.
 - `get_screen_size`: returns the current screen size.
 - `screen_capture`: captures the current screen and returns metadata plus an optional inline image.
-- `wait_for_screen_change`: polls the screen until content changes and then captures the updated image.
 - `get_mouse_position`: returns the current mouse position.
 - `mouse_move`: moves the mouse to specific coordinates.
 - `mouse_drag`: drags the mouse to specific coordinates.

@@ -48,7 +48,7 @@ src/
 
 ## Screenshot Lifecycle
 
-1. `screen_capture` or `wait_for_screen_change` asks the screenshot adapter for an image.
+1. `screen_capture` asks the screenshot adapter for an image.
 2. The screenshot is stored in the bounded screenshot store with UUID, TTL and byte metadata.
 3. The tool returns metadata and, optionally, an inline image if allowed by limits.
 4. The same screenshot is later accessible through `screenshot://{id}`.
