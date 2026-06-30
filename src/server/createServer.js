@@ -57,19 +57,6 @@ function createServer(dependencies) {
   );
 
   server.tool(
-    'wait_for_screen_change',
-    'Waits until the screen content changes and captures the updated screen',
-    {
-      includeImage: z.boolean().optional().describe('Whether to embed the changed image inline in the response'),
-      format: z.enum(['png', 'jpg', 'jpeg']).default('png').describe('Requested image format'),
-      displayId: z.union([z.string(), z.number()]).optional().describe('Optional display identifier'),
-      timeoutMs: z.number().positive().optional().describe('Maximum wait time in milliseconds'),
-      pollIntervalMs: z.number().positive().optional().describe('Polling interval in milliseconds'),
-    },
-    async (params) => screenTools.waitForScreenChange(params),
-  );
-
-  server.tool(
     'keyboard_press',
     'Presses a keyboard key or key combination',
     {

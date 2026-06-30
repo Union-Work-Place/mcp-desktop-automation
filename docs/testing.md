@@ -13,7 +13,7 @@
 - `npm run test:unit` validates unit-level behavior, including the VS Code MCP config
 - `npm run test:contract` checks the MCP stdio contract and tool discovery
 - `npm run test:smoke` runs a lightweight stdio smoke test against the launcher
-- `npm run test:live-smoke` runs a live Linux desktop smoke test for `screen_capture` and `wait_for_screen_change`
+- `npm run test:live-smoke` runs a live Linux desktop smoke test for `screen_capture`
 
 ## Notes
 

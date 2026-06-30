@@ -66,14 +66,6 @@ function createConfig(env = process.env) {
     blockedTools: parseList(env.MCP_DESKTOP_AUTOMATION_BLOCKED_TOOLS),
     safeArea: parseSafeArea(env.MCP_DESKTOP_AUTOMATION_SAFE_AREA),
     screenCaptureTimeoutMs: parsePositiveInteger(env.MCP_DESKTOP_AUTOMATION_SCREEN_CAPTURE_TIMEOUT_MS, 15000),
-    waitForScreenChangeTimeoutMs: parsePositiveInteger(
-      env.MCP_DESKTOP_AUTOMATION_WAIT_FOR_SCREEN_CHANGE_TIMEOUT_MS,
-      10000,
-    ),
-    waitForScreenChangePollIntervalMs: parsePositiveInteger(
-      env.MCP_DESKTOP_AUTOMATION_WAIT_FOR_SCREEN_CHANGE_POLL_INTERVAL_MS,
-      500,
-    ),
     screenCaptureInlineByDefault: parseBoolean(
       env.MCP_DESKTOP_AUTOMATION_SCREEN_CAPTURE_INLINE_BY_DEFAULT,
       false,

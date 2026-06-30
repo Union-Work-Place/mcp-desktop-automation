@@ -17,7 +17,7 @@ npm start
 
 If `DISPLAY` and `WAYLAND_DISPLAY` are both missing, the server first tries to auto-detect an X11 display from `/tmp/.X11-unix`.
 
-If no display can be resolved, `screen_capture` and `wait_for_screen_change` return a controlled MCP error instead of terminating the server.
+If no display can be resolved, `screen_capture` returns a controlled MCP error instead of terminating the server.
 
 ## Xvfb Example
 
@@ -42,4 +42,4 @@ The CI workflow uses `xvfb-run` for Linux test execution.
 
 - `get_desktop_capabilities` reports display mode as `x11`, `wayland` or `headless`.
 - `diagnostics://status` reports screenshot store metrics and current platform policy.
-- `npm run test:live-smoke` runs a live stdio smoke check on Linux, validates `screen_capture`, then opens an `xterm` window to trigger `wait_for_screen_change`.
+- `npm run test:live-smoke` runs a live stdio smoke check on Linux and validates `screen_capture`.
