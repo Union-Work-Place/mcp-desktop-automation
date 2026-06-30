@@ -23,6 +23,33 @@ test('keyboard normalization rejects unsupported values', () => {
   assert.throws(() => normalizeModifiers(['hyper'], 'linux'), /Unsupported modifier/i);
 });
 
+test('keyboard normalization accepts punctuation and special keys', () => {
+  assert.equal(normalizeKey('minus'), 'minus');
+  assert.equal(normalizeKey('equal'), 'equal');
+  assert.equal(normalizeKey('bracket_left'), 'bracket_left');
+  assert.equal(normalizeKey('bracket_right'), 'bracket_right');
+  assert.equal(normalizeKey('backslash'), 'backslash');
+  assert.equal(normalizeKey('semicolon'), 'semicolon');
+  assert.equal(normalizeKey('quote'), 'quote');
+  assert.equal(normalizeKey('grave'), 'grave');
+  assert.equal(normalizeKey('comma'), 'comma');
+  assert.equal(normalizeKey('period'), 'period');
+  assert.equal(normalizeKey('slash'), 'slash');
+  assert.equal(normalizeKey('print_screen'), 'print_screen');
+  assert.equal(normalizeKey('scroll_lock'), 'scroll_lock');
+  assert.equal(normalizeKey('num0'), 'num0');
+  assert.equal(normalizeKey('num9'), 'num9');
+  assert.equal(normalizeKey('numpad_0'), 'numpad_0');
+  assert.equal(normalizeKey('numpad_add'), 'numpad_add');
+  assert.equal(normalizeKey('numpad_subtract'), 'numpad_subtract');
+  assert.equal(normalizeKey('numpad_multiply'), 'numpad_multiply');
+  assert.equal(normalizeKey('numpad_divide'), 'numpad_divide');
+  assert.equal(normalizeKey('numpad_enter'), 'numpad_enter');
+  assert.equal(normalizeKey('numpad_decimal'), 'numpad_decimal');
+  assert.equal(normalizeKey('numpad_equals'), 'numpad_equals');
+  assert.equal(normalizeKey('numpad_lock'), 'numpad_lock');
+});
+
 test('launcher discovers versioned unix runtimes without hardcoded versions', () => {
   const nodePath = findCompatibleNode({
     env: { PATH: '' },
