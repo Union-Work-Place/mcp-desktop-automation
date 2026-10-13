@@ -1,7 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { getKeyboardCompatibility, normalizeKey, normalizeModifiers } = require('../../src/domain/keyboard');
+const {
+  SHIFTED_PUNCTUATION_KEYS,
+  getKeyboardCompatibility,
+  normalizeKey,
+  normalizeModifiers,
+  planTextKeystrokes,
+} = require('../../src/domain/keyboard');
 const { findCompatibleNode, getWellKnownCandidates } = require('../../launch');
 
 test('keyboard aliases normalize across platforms', () => {
@@ -101,4 +107,64 @@ test('launcher includes common Windows runtime locations', () => {
   assert.ok(candidates.includes('C:\\custom\\node.exe'));
   assert.ok(candidates.includes('C:\\Program Files\\nodejs\\node.exe'));
   assert.ok(candidates.includes('C:\\nvs\\default\\node.exe'));
+});
+
+test('keyboard normalization accepts literal punctuation characters', () => {
+  assert.equal(normalizeKey('-'), 'minus');
+  assert.equal(normalizeKey('='), 'equal');
+  assert.equal(normalizeKey('['), 'bracket_left');
+  assert.equal(normalizeKey(']'), 'bracket_right');
+  assert.equal(normalizeKey('\\'), 'backslash');
+  assert.equal(normalizeKey(';'), 'semicolon');
+  assert.equal(normalizeKey('\''), 'quote');
+  assert.equal(normalizeKey(','), 'comma');
+  assert.equal(normalizeKey('.'), 'period');
+  assert.equal(normalizeKey('/'), 'slash');
+  assert.equal(normalizeKey('`'), 'grave');
+  assert.equal(normalizeKey(' '), 'space');
+});
+
+test('planTextKeystrokes handles empty and non-linux inputs', () => {
+  assert.deepEqual(planTextKeystrokes('', 'linux'), []);
+  assert.deepEqual(planTextKeystrokes(null, 'linux'), []);
+  assert.deepEqual(planTextKeystrokes('echo hello && bye', 'win32'), [
+    { type: 'typeString', text: 'echo hello && bye' },
+  ]);
+  assert.deepEqual(planTextKeystrokes('echo hello && bye', 'darwin'), [
+    { type: 'typeString', text: 'echo hello && bye' },
+  ]);
+});
+
+test('planTextKeystrokes plans shifted punctuation on Linux for issue #11 command', () => {
+  const input = 'mkdir -p /tmp/gui_smoke && cd /home/hospi/projects/smart_flower_pot/builds/debug';
+  const plan = planTextKeystrokes(input, 'linux');
+
+  assert.deepEqual(plan, [
+    { type: 'typeString', text: 'mkdir -p /tmp/gui' },
+    { type: 'keyTap', key: '-', modifiers: ['shift'], raw: '_' },
+    { type: 'typeString', text: 'smoke ' },
+    { type: 'keyTap', key: '7', modifiers: ['shift'], raw: '&' },
+    { type: 'keyTap', key: '7', modifiers: ['shift'], raw: '&' },
+    { type: 'typeString', text: ' cd /home/hospi/projects/smart' },
+    { type: 'keyTap', key: '-', modifiers: ['shift'], raw: '_' },
+    { type: 'typeString', text: 'flower' },
+    { type: 'keyTap', key: '-', modifiers: ['shift'], raw: '_' },
+    { type: 'typeString', text: 'pot/builds/debug' },
+  ]);
+});
+
+test('planTextKeystrokes covers all shifted punctuation characters on Linux', () => {
+  const allShifted = Object.keys(SHIFTED_PUNCTUATION_KEYS).join('');
+  const plan = planTextKeystrokes(allShifted, 'linux');
+
+  assert.equal(plan.length, Object.keys(SHIFTED_PUNCTUATION_KEYS).length);
+  for (let i = 0; i < plan.length; i++) {
+    const ch = allShifted[i];
+    assert.deepEqual(plan[i], {
+      type: 'keyTap',
+      key: SHIFTED_PUNCTUATION_KEYS[ch],
+      modifiers: ['shift'],
+      raw: ch,
+    });
+  }
 });

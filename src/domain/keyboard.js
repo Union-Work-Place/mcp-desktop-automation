@@ -10,6 +10,18 @@ const KEY_ALIASES = {
   pgdn: 'pagedown',
   page_down: 'pagedown',
   spacebar: 'space',
+  ' ': 'space',
+  '-': 'minus',
+  '=': 'equal',
+  '[': 'bracket_left',
+  ']': 'bracket_right',
+  '\\': 'backslash',
+  ';': 'semicolon',
+  '\'': 'quote',
+  ',': 'comma',
+  '.': 'period',
+  '/': 'slash',
+  '`': 'grave',
 };
 
 const MODIFIER_ALIASES = {
@@ -95,7 +107,8 @@ function getPrimaryModifier(platform) {
 }
 
 function normalizeKey(key, platform) {
-  const normalized = String(key || '').trim().toLowerCase();
+  const raw = String(key || '');
+  const normalized = raw === ' ' ? ' ' : raw.trim().toLowerCase();
   const aliased = normalized === 'primary'
     ? getPrimaryModifier(platform || process.platform)
     : KEY_ALIASES[normalized] || MODIFIER_ALIASES[normalized] || normalized;
@@ -131,16 +144,81 @@ function normalizeModifiers(modifiers, platform) {
   }, []);
 }
 
+const SHIFTED_PUNCTUATION_KEYS = {
+  '~': '`',
+  '!': '1',
+  '@': '2',
+  '#': '3',
+  '$': '4',
+  '%': '5',
+  '^': '6',
+  '&': '7',
+  '*': '8',
+  '(': '9',
+  ')': '0',
+  '_': '-',
+  '+': '=',
+  '{': '[',
+  '}': ']',
+  '|': '\\',
+  ':': ';',
+  '"': '\'',
+  '<': ',',
+  '>': '.',
+  '?': '/',
+};
+
+function planTextKeystrokes(text, platform = process.platform) {
+  const str = String(text ?? '');
+  if (!str) {
+    return [];
+  }
+
+  if (platform !== 'linux') {
+    return [{ type: 'typeString', text: str }];
+  }
+
+  const actions = [];
+  let buffer = '';
+
+  for (const ch of str) {
+    const baseKey = SHIFTED_PUNCTUATION_KEYS[ch];
+    if (baseKey) {
+      if (buffer.length > 0) {
+        actions.push({ type: 'typeString', text: buffer });
+        buffer = '';
+      }
+      actions.push({
+        type: 'keyTap',
+        key: baseKey,
+        modifiers: ['shift'],
+        raw: ch,
+      });
+    } else {
+      buffer += ch;
+    }
+  }
+
+  if (buffer.length > 0) {
+    actions.push({ type: 'typeString', text: buffer });
+  }
+
+  return actions;
+}
+
 function getKeyboardCompatibility(platform) {
   return {
     primaryModifier: getPrimaryModifier(platform),
     keyAliases: Object.assign({}, KEY_ALIASES),
     modifierAliases: Object.assign({ primary: getPrimaryModifier(platform) }, MODIFIER_ALIASES),
+    shiftedPunctuationKeys: Object.assign({}, SHIFTED_PUNCTUATION_KEYS),
   };
 }
 
 module.exports = {
+  SHIFTED_PUNCTUATION_KEYS,
   getKeyboardCompatibility,
   normalizeKey,
   normalizeModifiers,
+  planTextKeystrokes,
 };
