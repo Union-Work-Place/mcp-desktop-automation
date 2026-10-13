@@ -133,3 +133,42 @@ test('robotjs adapter delegates calls to provided implementation', () => {
     ['keyToggle', 'shift', 'down', ['control']],
   ]);
 });
+
+test('robotjs adapter handles shifted characters on Linux and delegates whole string on other platforms', () => {
+  const linuxCalls = [];
+  const linuxAdapter = createRobotjsAdapter(
+    {
+      typeString(text) {
+        linuxCalls.push(['typeString', text]);
+      },
+      keyTap(key, modifiers) {
+        linuxCalls.push(['keyTap', key, modifiers]);
+      },
+    },
+    { platform: 'linux' },
+  );
+
+  linuxAdapter.typeString('foo && bar');
+  assert.deepEqual(linuxCalls, [
+    ['typeString', 'foo '],
+    ['keyTap', '7', ['shift']],
+    ['keyTap', '7', ['shift']],
+    ['typeString', ' bar'],
+  ]);
+
+  const winCalls = [];
+  const winAdapter = createRobotjsAdapter(
+    {
+      typeString(text) {
+        winCalls.push(['typeString', text]);
+      },
+      keyTap(key, modifiers) {
+        winCalls.push(['keyTap', key, modifiers]);
+      },
+    },
+    { platform: 'win32' },
+  );
+
+  winAdapter.typeString('foo && bar');
+  assert.deepEqual(winCalls, [['typeString', 'foo && bar']]);
+});

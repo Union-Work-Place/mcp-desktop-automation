@@ -28,7 +28,9 @@ async function main() {
     config,
     logger,
     platform,
-    robotAdapter: createRobotjsAdapter(),
+    robotAdapter: createRobotjsAdapter(undefined, {
+      platform: platform.getDesktopCapabilities(config).platform,
+    }),
     screenshotAdapter: createScreenshotAdapter(),
     screenshotStore: createScreenshotStore(config),
   });

@@ -1,7 +1,9 @@
 const robot = require('robotjs');
+const { planTextKeystrokes } = require('../domain/keyboard');
 
-function createRobotjsAdapter(implementation) {
+function createRobotjsAdapter(implementation, options = {}) {
   const robotApi = implementation || robot;
+  const platform = options.platform || process.platform;
 
   return {
     getScreenSize() {
@@ -28,7 +30,14 @@ function createRobotjsAdapter(implementation) {
       robotApi.mouseClick(button);
     },
     typeString(text) {
-      robotApi.typeString(text);
+      const actions = planTextKeystrokes(text, platform);
+      for (const action of actions) {
+        if (action.type === 'keyTap' && typeof robotApi.keyTap === 'function') {
+          robotApi.keyTap(action.key, action.modifiers);
+        } else if (typeof robotApi.typeString === 'function') {
+          robotApi.typeString(action.text || action.raw || action.key);
+        }
+      }
     },
     pressKey(key, modifiers) {
       if (!modifiers || modifiers.length === 0) {
